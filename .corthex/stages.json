@@ -22,6 +22,28 @@
       ],
       "next": "02 PRD: domain.md 6절의 열린 핫스팟(추측 1~9 포함, H-04·H-06은 요구사항 전에 답 필요)과 review in stage 02 규칙을 다시 봄",
       "updated": "2026-11-27T18:05:00+00:00"
+    },
+    "02-prd": {
+      "state": "in_progress",
+      "checks": [
+        {
+          "level": "info",
+          "message": "REQ 81개(Must 67, Should 14), 질문 대기 10개. 체크포인트 질문 6개(범위 고정 1 + 질문 1~5)는 docs/02-prd/checkpoint-02.md",
+          "at": "2026-11-28"
+        },
+        {
+          "level": "warn",
+          "message": "F-1: 콘솔에서 사업자 없이 mTLS 인증서가 발급되는지 미확인(REQ-041, REQ-058)",
+          "at": "2026-11-28"
+        },
+        {
+          "level": "warn",
+          "message": "F-2: 전환 지표 이벤트를 남기는 SDK 호출 미확인(REQ-071)",
+          "at": "2026-11-28"
+        }
+      ],
+      "next": "오랑이가 checkpoint-02.md의 범위 고정 질문과 질문 1~5에 답함 → 결정된 문장만 바꾸는 PR → 병합·push 뒤 NEXUS 02 목록 확정(버전 고정)",
+      "updated": "2026-11-28T08:50:00+09:00"
     }
   }
 }
