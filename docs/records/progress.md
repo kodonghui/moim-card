@@ -1,5 +1,14 @@
 # 진행 기록
 
+### 2026-11-28 02:30 KST · 01 도메인 설계 체크포인트 통과 기록
+
+- Done: 사용자님 답 "질문 3개 추천대로"(Orca 항목 232, 이벤트 e4032)를 DEC-003(H-01), DEC-004(H-02), DEC-005(H-03)로, NEXUS 01 단계의 "확정"(체크포인트 `nk_000000000001`, 2026-11-27 22:07 KST)을 DEC-006으로 기록했어요. H-01~03을 `answered`로 닫고, domain.md·board.md·checkpoint-01.md에 반영했어요. `.corthex/stages.json`의 01-domain을 `done`으로, 승인 커밋을 그림 `e1139e7` / main `469dd3d`로 적었어요.
+- Why: 사용자님이 질문 3개에 답하고 NEXUS에서 DDD 그림을 확정함.
+- Result: 01 단계 통과(그린 대로 승인). AI 추측 9개는 질문으로 정해지지 않아 [추측]·[추론] 표시를 그대로 두고 02 PRD에서 다시 볼 것으로 표시했어요(H-04, H-06은 요구사항을 쓰기 전에 답 필요).
+- Checked: `git diff e1139e7 469dd3d`로 domain.md·board.md가 같음을 확인했어요. NEXUS 스레드 상태는 `hub.py show`로 읽었어요: 질문 1 스레드(`nc_000000000002`)는 답 없이 사용자님이 닫은 상태였고(2026-11-27 21:59 KST), 질문 2는 `nc_000000000001`, 질문 3은 `nc_000000000003`이에요. 사람 댓글 2개(`nc_000000000005`, `nc_000000000006`)는 "스레드 닫기를 잘못 눌렀다"는 말이에요. 사람이 고친 항목 0개, 답은 대화(Orca)에서만 왔어요. `hub.py status --repository`는 이 작업공간이 아니라 profile에 등록된 checkout에 써서, 그 내용을 이 브랜치로 옮기고 그 checkout은 원래대로 되돌렸어요. NEXUS 주소는 공개 저장소라 기록에 넣지 않았어요.
+- NEXUS: 체크포인트 `nk_000000000001`에 이 PR을 `record opened`로 알렸어요(record_state `in_review`). 질문 2(`nc_000000000001`), 질문 3(`nc_000000000003`), 체크포인트 요청(`nc_000000000004`)에 결정을 답글로 달고 `decide --link`(decisions.md, 커밋 `e1de339`)를 보냈어요. 질문 1 스레드(`nc_000000000002`)는 닫혀 있어 답글이 거절돼(`thread_closed`) CTX-001에 새 댓글(`nc_000000000007`)로 결정을 남기고 같은 링크로 `decide`를 보냈어요. `nc_000000000006`(스레드 닫기를 잘못 눌렀다는 말)에는 기능 설명을 답글로 달았어요. 서버는 decision 항목을 붙였지만 스레드는 모두 `open`, 사용자 대기로 남았어요(`show`로 확인). `push moim-card --dry-run`은 main 기준 항목 48, checks 0, 01 그림 1개예요.
+- Next: PR 병합(사용자님 승인 사항) → 병합 뒤 `push moim-card` → NEXUS 체크포인트 `record merged` → 02 PRD.
+
 ### 2026-11-27 21:50 KST · NEXUS 첫 push와 01 체크포인트 요청
 
 - Done: `hub.py can-send moim-card`(can_send true) → `push moim-card --dry-run`(항목 48: 컨텍스트 6, 용어 42, 01 그림 1개) → `push moim-card --first`(revision 1, commit `e1139e7`, 그림 drawn 1, failed 0). NEXUS 01 단계에 질문 3개를 항목 댓글로(nc_000000000001 합의 카드, nc_000000000002 CTX-001, nc_000000000003 CTX-003, 모두 추천안 포함) 올리고 체크포인트 요청(nc_000000000004)을 단계 전체 댓글로 올렸어요.

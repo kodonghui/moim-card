@@ -3,10 +3,18 @@
   "project": "moim-card",
   "stages": {
     "01-domain": {
-      "state": "in_progress",
-      "checkpoints": [],
-      "next": "체크포인트 대기: NEXUS 01 단계에 체크포인트 요청(nc_000000000004)과 질문 3개(nc_000000000001~003)를 올림. 사용자님이 NEXUS에서 답하고 통과를 누르면 AI가 문서에 반영하고 통과를 기록함",
-      "updated": "2026-11-27T12:46:41+00:00"
+      "state": "done",
+      "checkpoints": [
+        {
+          "approved": "01 도메인 설계(CTX-001~006, TERM-001~042)를 그린 대로 승인. 질문 3개는 추천안대로(DEC-003~005, Orca 항목 232 \"질문 3개 추천대로\"), NEXUS 확정(DEC-006). 승인 커밋: 그림 e1139e7, main 469dd3d(domain.md·board.md 같음). AI 추측 9개는 추측으로 남김",
+          "by": "the owner",
+          "nexus": "nk_000000000001",
+          "where": "docs/records/decisions.md (DEC-006), NEXUS 체크포인트 nk_000000000001",
+          "date": "2026-11-27"
+        }
+      ],
+      "next": "02 PRD: domain.md 6절의 열린 핫스팟(추측 1~9 포함, H-04·H-06은 요구사항 전에 답 필요)과 review in stage 02 규칙을 다시 봄",
+      "updated": "2026-11-27T17:27:02+00:00"
     }
   }
 }
