@@ -1,5 +1,13 @@
 # 진행 기록
 
+### 2026-11-27 21:50 KST · NEXUS 첫 push와 01 체크포인트 요청
+
+- Done: `hub.py can-send moim-card`(can_send true) → `push moim-card --dry-run`(항목 48: 컨텍스트 6, 용어 42, 01 그림 1개) → `push moim-card --first`(revision 1, commit `e1139e7`, 그림 drawn 1, failed 0). NEXUS 01 단계에 질문 3개를 항목 댓글로(nc_000000000001 합의 카드, nc_000000000002 CTX-001, nc_000000000003 CTX-003, 모두 추천안 포함) 올리고 체크포인트 요청(nc_000000000004)을 단계 전체 댓글로 올렸어요.
+- Why: 사용자님이 체크포인트를 NEXUS에서 보고 정하기로 함(DEC-002, Orca 항목 232 "Nexus에 올려").
+- Result: 서버가 moim-card를 commit `e1139e7`로 갖고 있고(그림 1, drawing 1), to-do의 사용자 대기 5건이에요.
+- Checked: 첫 dry-run은 origin HEAD가 없어 그림을 빼서(경고 1), `git remote set-head origin --auto` 뒤 다시 돌려 경고 0으로 보냈어요. CI 자동 설정은 `CORTHEX_NEXUS_URL`이 없어 건너뛰었어요. NEXUS 단계 화면은 사용자님 로그인으로만 열려(owner_only) AI는 화면을 직접 보지 못했어요. 처음 두 질문 댓글은 그림에 없는 용어(TERM-016, TERM-023)를 가리켜 거절돼 CTX-001, CTX-003에 다시 올렸어요.
+- Next: 사용자님이 NEXUS 01 단계에서 질문 3개에 답하고 체크포인트를 통과 → AI가 문서에 반영하고 통과를 기록 → 02 PRD.
+
 ### 2026-11-27 20:30 KST · CORTHEX 등록과 01 도메인 설계 초안
 
 - Done: 저장소를 CORTHEX 프로젝트 `moim-card`로 등록하고(`.corthex/project.json`), 조사 노트 3개를 `docs/00-research/`에 남겼어요. `corthex-discover`의 one-pass draft로 01 도메인 설계 1~9단계 초안을 썼어요.
