@@ -11,10 +11,17 @@
           "nexus": "nk_000000000001",
           "where": "docs/records/decisions.md (DEC-006), NEXUS 체크포인트 nk_000000000001",
           "date": "2026-11-27"
+        },
+        {
+          "approved": "PR #3 병합 뒤 새 DDD 그림(main 3e5c0b9)을 다시 확정. PR #3이 핫스팟 상태를 바꿔 nk_000000000001 확정이 무효화됐기 때문이에요. 내용 결정은 DEC-003~006 그대로(DEC-007)",
+          "by": "the owner (approved; pressed by the coordinator agent on the owner's behalf)",
+          "nexus": "nk_000000000002",
+          "where": "docs/records/decisions.md (DEC-007), NEXUS 체크포인트 nk_000000000002",
+          "date": "2026-11-28"
         }
       ],
       "next": "02 PRD: domain.md 6절의 열린 핫스팟(추측 1~9 포함, H-04·H-06은 요구사항 전에 답 필요)과 review in stage 02 규칙을 다시 봄",
-      "updated": "2026-11-27T17:27:02+00:00"
+      "updated": "2026-11-27T18:05:00+00:00"
     }
   }
 }

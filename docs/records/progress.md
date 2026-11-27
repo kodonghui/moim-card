@@ -1,5 +1,13 @@
 # 진행 기록
 
+### 2026-11-28 03:05 KST · 01 다시 확정과 기록
+
+- Done: PR #3을 squash 병합(커밋 `3e5c0b9`, 사용자님 '병합해', Orca 항목 232 e4082)한 뒤 `push moim-card --dry-run`(항목 48, checks 0) → `push moim-card`(revision 3, 그림 drawn 1, failed 0)를 보냈어요. 응답의 `confirmations_invalidated`가 1이었어요. 이어 `nk_000000000001`에 `record merged`(PR #3)를 보내 `recorded`가 됐어요. 사용자님 승인("모두 승인", "대신 눌러", e4132·e4135)으로 토링이가 새 그림을 다시 확정했어요(`nk_000000000002`). 이를 DEC-007로, `.corthex/stages.json`의 두 번째 체크포인트로 기록했어요.
+- Why: PR #3이 domain.md의 핫스팟 상태를 바꿔 DDD 그림이 새로 그려졌어요. NEXUS 규칙상 새 그림은 이전 확정을 무효화하고, 무효화된 확정으로는 단계 통과가 쓰이지 않아요.
+- Result: 이 PR이 병합되고 `record merged`를 보내면 NEXUS 01이 통과로 기록돼요. 이 PR은 `.corthex/stages.json`과 `docs/records/`만 바꿔요. DDD 그림이 읽는 domain.md는 바꾸지 않아 새 확정은 무효화되지 않아요.
+- Checked: `hub.py show`로 `nk_000000000002`가 `state passed`, `confirmation confirmed`, 그림 `dw_000000000003`, 버전 `3e5c0b9`임을 확인했어요. 단계 통과 여부가 담긴 project read는 owner 로그인 전용이라 에이전트 토큰으로는 읽지 못했어요. 열린 스레드 5개(`nc_000000000001`, `003`, `004`, `006`, `007`)는 사용자 대기이고, NEXUS 규칙상 owner만 닫을 수 있어요.
+- Next: 이 PR 병합(사용자님 승인 사항) → `push moim-card` → `nk_000000000002`에 `record merged` → NEXUS 01 통과 확인 → 02 PRD.
+
 ### 2026-11-28 02:30 KST · 01 도메인 설계 체크포인트 통과 기록
 
 - Done: 사용자님 답 "질문 3개 추천대로"(Orca 항목 232, 이벤트 e4032)를 DEC-003(H-01), DEC-004(H-02), DEC-005(H-03)로, NEXUS 01 단계의 "확정"(체크포인트 `nk_000000000001`, 2026-11-27 22:07 KST)을 DEC-006으로 기록했어요. H-01~03을 `answered`로 닫고, domain.md·board.md·checkpoint-01.md에 반영했어요. `.corthex/stages.json`의 01-domain을 `done`으로, 승인 커밋을 그림 `e1139e7` / main `469dd3d`로 적었어요.
