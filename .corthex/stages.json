@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "project": "moim-card",
+  "stages": {
+    "01-domain": {
+      "state": "in_progress",
+      "checkpoints": [],
+      "next": "체크포인트 대기: 사용자님이 NEXUS에서 질문 3개(H-01~H-03)와 추측을 보고 답함(DEC-002). NEXUS에 보이려면 이 PR 병합과 첫 push가 먼저 필요함",
+      "updated": "2026-11-27T11:11:19+00:00"
+    }
+  }
+}
