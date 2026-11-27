@@ -1,0 +1,16 @@
+{
+  "name": "moim-card",
+  "title": "모임 합의 카드(가칭)",
+  "team": false,
+  "language": "ko",
+  "records": { "kind": "git", "location": "docs/records/" },
+  "stages": {
+    "01-domain": {
+      "human": "github",
+      "link": "docs/01-domain/board.md",
+      "source": "docs/01-domain/domain.md",
+      "truth": "source",
+      "note": "2026-11-27: 기본 human view는 Miro 보드지만, 이번 작업 지시가 저장소 밖 쓰기를 허용하지 않았고 보드 생성은 사용자 확인 사항이라 보드를 만들지 않았어요. 이벤트 스토밍 보드는 저장소 안 텍스트(board.md, Mermaid 포함)로 대신해요. 진행 방식은 one-pass draft(AI가 1~9단계를 한 번에 초안, 체크포인트 1번)예요. Miro로 옮길지는 사용자님이 정해요."
+    }
+  }
+}
