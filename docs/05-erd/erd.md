@@ -1,6 +1,6 @@
 # 모임 합의 카드(가칭): ERD (05)
 
-상태: **스키마 고정, 체크포인트 통과**(2026-11-28, DEC-022) · 원본: [db/schema.sql](../../db/schema.sql)(TBL-001~015) · 마이그레이션: [db/migrations/0001_init.sql](../../db/migrations/0001_init.sql) · 체크포인트 질문: [checkpoint-05.md](checkpoint-05.md)
+상태: **스키마 고정, 체크포인트 통과**(2026-11-28, DEC-022) · 변경: TBL-016 성향 문구를 더함(DEC-039, 변경 절차, 0002) · 원본: [db/schema.sql](../../db/schema.sql)(TBL-001~016) · 마이그레이션: [db/migrations/0001_init.sql](../../db/migrations/0001_init.sql), [0002_profile_phrases.sql](../../db/migrations/0002_profile_phrases.sql) · 체크포인트 질문: [checkpoint-05.md](checkpoint-05.md)
 
 - 입력: [04 기능 명세](../04-functional-spec/spec.md)(SPEC-001~039, DEC-016·020), [01 도메인 설계](../01-domain/domain.md)의 애그리거트 규칙과 용어집(TERM-001~046).
 - 데이터베이스: Cloudflare D1(SQLite)이에요. 테이블은 모두 `STRICT`이고, 외래 키는 D1이 기본으로 지켜요. 한 요청의 여러 쓰기는 D1 batch 하나(트랜잭션 하나)로 보내요(C-4).
@@ -19,6 +19,7 @@ erDiagram
   users ||--o{ idempotency_records : "요청 ID"
   themes ||--o{ question_sets : "버전"
   question_sets ||--|{ questions : "문항 8개"
+  question_sets ||--|{ profile_phrases : "성향 문구 7개"
   question_sets ||--o{ rooms : "고정"
   rooms ||--|{ participants : "최대 8명"
   participants ||--o| responses : "응답 하나"
@@ -49,6 +50,10 @@ erDiagram
     int question_set_id PK
     int position PK
     text axis
+  }
+  profile_phrases {
+    int question_set_id PK
+    text slot PK
   }
   rooms {
     int id PK
@@ -117,6 +122,7 @@ erDiagram
 | TBL-013 | idempotency_records | 공통 | 없음 | 요청 ID와 첫 결과(24시간) | SPEC-005, SPEC-007, SPEC-011, SPEC-016, SPEC-024, SPEC-029 |
 | TBL-014 | rate_counters | 공통 | 없음 | 토스 API·쓰기·방 만들기 한도 계수, 토스 API 1분 구간 기록 | SPEC-002, SPEC-005, SPEC-024, SPEC-025, SPEC-038 |
 | TBL-015 | entry_stats | CTX-005 | 없음 | 날짜·유입 종류별 진입 수(사용자 값 없음) | SPEC-001, SPEC-023 |
+| TBL-016 | profile_phrases | CTX-002 | TERM-024 | 문항 세트 버전마다 성향 문구 7개(축 3개의 '낮음'·'높음', '균형' 1개). 한 줄 설명의 출처(DEC-039) | SPEC-012, SPEC-031 |
 
 테이블이 없는 용어: TERM-023 내 모임 성향(저장하지 않는 계산, REQ-029), TERM-040 점검 목록(저장소 파일), TERM-042 내 데이터 현황(여러 테이블을 세는 조회), TERM-045 금칙어 목록(번들 안 파일). 01 용어집의 나머지 리드 모델은 위 표의 테이블에 있어요: 테마 목록 TERM-036 → TBL-004, 방 소개 TERM-037·응답 현황 TERM-039 → TBL-006, 문항 화면 TERM-038 → TBL-005, 내 방 목록 TERM-046 → TBL-007.
 
@@ -129,6 +135,7 @@ erDiagram
 | 식별키 원문을 두지 않음, 같은 사용자는 하나 | REQ-074, SPEC-003 | TBL-001에 원문 열이 없음, `key_hash` UNIQUE |
 | 세션 토큰은 해시만, 12시간 | DEC-017 | TBL-002 `token_hash`, `expires_at = created_at + 43200` CHECK |
 | 배포된 버전은 바꾸지 않음 | 01 CTX-002, SPEC-031 | `(theme_id, version)` UNIQUE, 방이 쓰는 세트는 지울 수 없음(`ON DELETE RESTRICT`) |
+| 성향 문구는 세트마다 자리 7개에 하나씩, 60자 안 | SPEC-031, DEC-039 | `(question_set_id, slot)` 기본 키, `slot` 7개 값 CHECK, `length` CHECK. "7개 모두 있음"은 형식 검사 스크립트 |
 | 방 코드 형식 | C-5 | 31자 알파벳 10자 CHECK, UNIQUE |
 | 인원 2~8, 참여자 최대 8명, 응답 완료 ≤ 인원 | 01 CTX-001, DEC-003 | `party_size`, `participant_count`, `submitted_count` CHECK |
 | 열린 방 ↔ 마감 시각·이유 없음 | 01 CTX-001 | `(status = 'open') = (closed_at IS NULL)` CHECK |
@@ -164,8 +171,9 @@ erDiagram
 | E-2 | 사용자 ID는 무작위 128비트(26자), 방 ID는 `AUTOINCREMENT` 정수예요. | 지난 카드의 `room_ref`가 다시 쓰이지 않게 |
 | E-3 | 응답은 문항별 행 대신 8자 문자열 하나(`A`·`B`·`N`)로 둬요. | 응답은 늘 8개를 한꺼번에 읽고 써요. 형식은 CHECK로 막아요 |
 | E-4 | 카드 내용(문항별 수와 분류)은 JSON 열 하나로 둬요. 최종 카드는 트리거로 고정해요. | 카드는 한 번에 읽고, 최종 뒤에는 바뀌지 않아요 |
-| E-5 | 문구 길이: 문항 40자, 선택지 30자, 조율 제안·확정·기본 문구 60자, 테마 이름 20자. | 요구사항에 없는 한계라 AI가 정했어요. 형식 검사(SPEC-031)와 06 계약이 같은 수를 써요 |
+| E-5 | 문구 길이: 문항 40자, 선택지 30자, 조율 제안·확정·기본 문구·성향 문구(TBL-016, DEC-039) 60자, 테마 이름 20자. | 요구사항에 없는 한계라 AI가 정했어요. 형식 검사(SPEC-031)와 06 계약이 같은 수를 써요 |
 | E-6 | 한도 계수(C-6)를 D1 테이블에 둬요(TBL-014). | 미니앱 전체 토스 API 한도(분당 3,000건)는 모든 Worker가 함께 세야 해요. 쓰기 요청마다 D1 쓰기가 하나 늘어요 |
 | E-7 | 유입 경로는 서버에 날짜·종류별 수만 둬요(TBL-015). | SDK 로그는 토스의 `anonymous_key`를 자동으로 붙여 SPEC-023 [노출]과 맞지 않아요 |
 | E-8 | 발송 기록(TBL-012)은 내 데이터를 지워도 남아요. 식별키·문구·닉네임 없이 신청 번호·응답자 번호·결과만 있어요. | 같은 응답으로 다시 보내지 않으려면 기록이 남아야 해요. 방이 만료되면 함께 지워져요 |
 | E-9 | 문항 세트의 초안·검토 상태는 D1에 두지 않고 저장소 파일에 둬요. D1에는 배포된 세트만 와요. | 검토는 운영자가 저장소에서 해요(SPEC-032) |
+| E-10 | 성향 문구 7개(DEC-039)는 TBL-004에 열 7개를 더하지 않고 새 테이블 TBL-016으로, `0001_init.sql`을 고치지 않고 새 마이그레이션 `0002_profile_phrases.sql`로 더해요. 높은 쪽 선택지는 이미 있는 `questions.axis_pole_a`로 나타내요('high'면 A, 'low'면 B). | 서버가 한 줄 설명을 내려면 문구가 D1에 있어야 해요(E-9, 배포 스크립트가 넣음). 적용된 마이그레이션은 고치지 않는 규칙(schema.sql 머리말)을 지키고, 기존 테이블과 열은 그대로예요 |

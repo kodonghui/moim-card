@@ -2,7 +2,7 @@
 
 상태: **계약 승인, 체크포인트 통과**(2026-11-28, DEC-023~025) · 원본: [api/openapi.yaml](../../api/openapi.yaml)(OpenAPI 3.1, API-001~016) · 체크포인트 질문: [checkpoint-06.md](checkpoint-06.md)
 
-- 입력: [04 기능 명세](../04-functional-spec/spec.md)(SPEC-001~039), [05 ERD](../05-erd/erd.md)(TBL-001~015). 07 사이트맵 전이라 SCR ID는 아직 없어요.
+- 입력: [04 기능 명세](../04-functional-spec/spec.md)(SPEC-001~039), [05 ERD](../05-erd/erd.md)(TBL-001~016, TBL-016은 DEC-039로 더함). 07 사이트맵 전이라 SCR ID는 아직 없어요.
 - 계약이 먼저예요. 화면은 목 서버(`prism mock api/openapi.yaml`)로, 서버는 계약 테스트(`schemathesis run api/openapi.yaml --url <스테이징>`)로 맞춰요. 운영 서버에는 계약 테스트를 돌리지 않아요.
 - 진실의 원천은 `api/openapi.yaml`이에요(`truth: source`). 이 문서는 읽기 쉽게 줄인 것이에요.
 
@@ -29,8 +29,8 @@
 | API-004 | `GET /v1/rooms/{roomCode}` | 방 소개와 내 참여 상태(응답 현황 포함) | SPEC-006, SPEC-017, SPEC-021, SPEC-039 | TBL-006, 007, 008 | 200, 401, 403, 404, default |
 | API-005 | `POST /v1/rooms/{roomCode}/participants` | 방 입장 | SPEC-007, SPEC-008 | TBL-006, 007, 013, 014 | 200, 201, 400, 401, 403, 404, 409, 429, default |
 | API-006 | `GET /v1/rooms/{roomCode}/questions` | 문항 화면 | SPEC-010 | TBL-005~008 | 200, 401, 403, 404, 409, default |
-| API-007 | `POST /v1/rooms/{roomCode}/responses` | 응답 제출(카드 갱신, 자동 마감, 전환 표시, 알림 발송의 시작) | SPEC-011, 012, 014, 015, 018, 025, 026 | TBL-005~014 | 201, 400, 401, 403, 404, 409, 429, default |
-| API-008 | `GET /v1/rooms/{roomCode}/my-profile` | 내 모임 성향 | SPEC-012 | TBL-005, 007, 008 | 200, 401, 403, 404, default |
+| API-007 | `POST /v1/rooms/{roomCode}/responses` | 응답 제출(카드 갱신, 자동 마감, 전환 표시, 알림 발송의 시작) | SPEC-011, 012, 014, 015, 018, 025, 026 | TBL-005~014, 016 | 201, 400, 401, 403, 404, 409, 429, default |
+| API-008 | `GET /v1/rooms/{roomCode}/my-profile` | 내 모임 성향 | SPEC-012 | TBL-005, 007, 008, 016 | 200, 401, 403, 404, default |
 | API-009 | `GET /v1/rooms/{roomCode}/card` | 합의 카드(열린 방은 응답 뒤, 마감 뒤는 누구나) | SPEC-013, SPEC-019, SPEC-021 | TBL-005~009 | 200, 401, 403, 404, default |
 | API-010 | `POST /v1/rooms/{roomCode}/close` | 방장이 일찍 마감 | SPEC-015, SPEC-016, SPEC-026 | TBL-006, 007, 009, 010, 011, 013, 014 | 200, 400, 401, 403, 404, 409, 429, default |
 | API-011 | `POST /v1/rooms/{roomCode}/notification-subscription` | 알림 신청 | SPEC-024, SPEC-026 | TBL-001, 007, 008, 011, 013, 014 | 200, 201, 400, 401, 403, 404, 409, 429, 503, default |
