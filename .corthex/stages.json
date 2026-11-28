@@ -246,7 +246,7 @@
       "updated": "2026-11-28T18:45:00+09:00"
     },
     "10-wbs": {
-      "state": "in_progress",
+      "state": "done",
       "checks": [
         {
           "level": "info",
@@ -264,8 +264,16 @@
           "at": "2026-11-28"
         }
       ],
-      "next": "10 체크포인트(checkpoint-10.md 질문 1·2) 답 → 통과하면 11 개발 페이즈 0(TASK-001부터)",
-      "updated": "2026-11-28T21:00:00+09:00"
+      "next": "11 개발 페이즈 0: TASK-001부터(Codex 작업자). 월요일(2026-11-30) 이후 사용자님께 U-1 제품명 후보 2~3개+추천 하나와 U-2 콘솔 앱 등록(본인인증 단계만)을 여쭘",
+      "updated": "2026-11-28T21:30:00+09:00",
+      "checkpoints": [
+        {
+          "approved": "10 WBS 체크포인트 통과(다음 개발 계획 합의). TASK-001~054(PR #11 커밋 b5302a8)를 그대로 승인, 페이즈 0부터 Codex 작업자(gpt-6.1-terra xhigh). B-1~B-10 함께 승인(DEC-036·037). 질문 2: 제품명·콘솔 앱 등록은 월요일(2026-11-30) 이후 페이즈 0 진행과 함께 사용자님께, 본인인증이 걸리는 단계만 사용자님, 제품명은 후보 2~3개+추천 하나(DEC-038)",
+          "by": "the orchestrator agent on the owner's behalf (weekend delegation)",
+          "where": "docs/records/decisions.md (DEC-037, DEC-038)",
+          "date": "2026-11-28"
+        }
+      ]
     }
   }
 }

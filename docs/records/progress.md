@@ -1,5 +1,13 @@
 # 진행 기록
 
+### 2026-11-28 · 10 WBS 체크포인트 통과
+
+- Done: 토링이가 전한 오랑이 답을 DEC-037(질문 1 추천안 승인: TASK-001~054 그대로, 페이즈 0부터 Codex 작업자 gpt-6.1-terra xhigh)과 DEC-038(질문 2: 제품명·콘솔 앱 등록은 월요일 2026-11-30 이후 페이즈 0 진행과 함께 사용자님께, 본인인증 단계만 사용자님, 제품명은 후보 2~3개+추천 하나)로 기록했어요. DEC-036을 in force로 바꾸고, wbs.md 상태 줄·U-1·U-2의 "언제"·5절 문장, checkpoint-10.md 상태와 답, `.corthex/stages.json` 10-wbs `done`과 체크포인트를 고쳤어요.
+- Why: 토링이 작업 지시(2026-11-28, Orca 작업 task_402f3ad9d599). 위임 근거는 사용자님 주말 위임 "너가 다른애들 승인을 하던 말던 해라"예요.
+- Result: 10 통과. TASK와 의존·크기·완료 조건은 바뀌지 않았어요(결정된 문장만 반영).
+- Checked: check-wbs, check-contract, check-screens, term-check 결과는 PR #11과 보고에 적어요.
+- Next: 토링이가 PR #11 병합 → `push moim-card` → 11 개발 TASK-001. 월요일 이후 사용자님께 U-1(제품명 후보 2~3개+추천 하나)·U-2를 여쭘.
+
 ### 2026-11-28 · 10 WBS 초안(TASK-001~054)
 
 - Done: `corthex-build` 10 WBS로 [wbs.md](../10-wbs/wbs.md)를 썼어요: TASK 54개(SPEC·REQ·API·TBL·SCR 연결, 의존, 담당, 크기, 완료 조건), 페이즈 0~3, 사용자님 일 U-1~U-10(언제 필요한지), 개발 단계 확인 항목 3개와 미확인 F-1·F-3의 TASK 위치, AI가 정한 B-1~B-10(DEC-036, proposed). 체크포인트 질문 2개는 [checkpoint-10.md](../10-wbs/checkpoint-10.md)예요. 검사 스크립트 `scripts/check-wbs.py`를 더하고, `.corthex/project.json`에 10-wbs(human NEXUS, truth source), `.corthex/stages.json`에 10-wbs `in_progress`를 넣었어요.
