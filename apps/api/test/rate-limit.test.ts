@@ -46,10 +46,10 @@ describe('TASK-007 rate limits', () => {
       expect(JSON.stringify(log.mock.calls)).not.toContain(user);
     } finally { log.mockRestore(); }
   });
-  it('increments both room and write counters and resets on a new window', async () => {
+  it('counts room creation separately and resets write windows', async () => {
     expect(await checkLimit(env.DB, 'room_create', user, now)).toBeNull();
     const rows = await snapshot();
-    expect(rows).toEqual([{scope:'room_create',subject:user,window_start:now,count:1}, {scope:'write',subject:user,window_start:minute,count:1}]);
+    expect(rows).toEqual([{scope:'room_create',subject:user,window_start:now,count:1}]);
     await seed('write', user, minute + 60, 60);
     expect((await checkLimit(env.DB, 'write', user, minute + 60))?.status).toBe(429);
     expect(await checkLimit(env.DB, 'write', user, minute + 120)).toBeNull();

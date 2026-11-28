@@ -31,6 +31,11 @@ describe('TASK-006 idempotency', () => {
     expect((await idempotent(env.DB,user,'bad','create','{}',now,plan)).status).toBe(400);
     expect(plan).not.toHaveBeenCalled();
   });
+  it('preserves Retry-After on a non-cacheable result', async () => {
+    const r = await idempotent(env.DB,user,key,'notify','{}',now,async () => ({status:429,body:{code:'rate_limited'},headers:{'Retry-After':'42'},statements:[]}));
+    expect(r.status).toBe(429); expect(r.headers.get('Retry-After')).toBe('42');
+    expect((await env.DB.prepare('SELECT count(*) AS n FROM idempotency_records').first<{n:number}>())?.n).toBe(0);
+  });
   it('rolls back the record when a write fails', async () => {
     await expect(idempotent(env.DB,user,key,'create','{}',now,async () => ({status:201,body:{},statements:[env.DB.prepare('INSERT INTO themes (id,name,sort_order) VALUES (?,?,?)').bind('INVALID','x',1)]}))).rejects.toThrow();
     expect((await env.DB.prepare('SELECT count(*) AS n FROM idempotency_records').first<{n:number}>())?.n).toBe(0);
