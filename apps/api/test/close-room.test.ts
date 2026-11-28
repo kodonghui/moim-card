@@ -41,13 +41,25 @@ describe('TASK-025 API-010 host close',()=>{
   const r=await worker.fetch(close(),bindings);expect(r.status).toBe(500);expect(await r.json()).toMatchObject({code:'internal'});
   expect((await env.DB.prepare('SELECT status FROM rooms').first<{status:string}>())?.status).toBe('open');expect(await count('past_cards')).toBe(0);expect(await count('notification_subscriptions')).toBe(1);
  });
- it('commits only one final card when host close races the last submission',async()=>{
-  let ready!:()=>void,release!:()=>void,waiting=0;const both=new Promise<void>(r=>{ready=r}),gate=new Promise<void>(r=>{release=r});
-  const delayed=new Proxy(env.DB,{get(target,prop){if(prop==='batch')return async (...args:Parameters<D1Database['batch']>)=>{if(++waiting<=2){if(waiting===2)ready();await gate}return target.batch(...args)};const v=Reflect.get(target,prop,target);return typeof v==='function'?v.bind(target):v}});
-  const pending=Promise.all([worker.fetch(close(),{...bindings,DB:delayed}),worker.fetch(submit('d'),{...bindings,DB:delayed})]);await both;release();const [host,last]=await pending;
-  expect(host.status).toBe(200);expect([201,409]).toContain(last.status);
-  const row=await env.DB.prepare('SELECT stage,based_on_count AS n FROM consensus_cards').first<{stage:string;n:number}>();expect(row?.stage).toBe('final');expect([3,4]).toContain(row?.n);
-  expect(await count('past_cards')).toBe(row?.n);expect(await count('notification_subscriptions')).toBe(0);
-  expect((await env.DB.prepare('SELECT count(*) AS n FROM consensus_cards').first<{n:number}>())?.n).toBe(1);
+ it('returns the automatic final card when the last submission wins the race',async()=>{
+  let signal!:()=>void,release!:()=>void,first=true;const started=new Promise<void>(r=>{signal=r}),gate=new Promise<void>(r=>{release=r});
+  const delayed=new Proxy(env.DB,{get(target,prop){if(prop==='batch')return async (...args:Parameters<D1Database['batch']>)=>{if(first){first=false;signal();await gate}return target.batch(...args)};const v=Reflect.get(target,prop,target);return typeof v==='function'?v.bind(target):v}});
+  const pending=worker.fetch(close(),{...bindings,DB:delayed});await started;
+  const last=await worker.fetch(submit('d'),bindings);expect(last.status).toBe(201);release();
+  const host=await pending;expect(host.status).toBe(200);const body=await host.json() as {closeReason:string;card:{stage:string;basedOnCount:number;items:unknown;nextAction:string}};
+  expect(body).toMatchObject({closeReason:'all_submitted',card:{stage:'final',basedOnCount:4}});
+  const current=await (await worker.fetch(new Request('https://api.test/v1/rooms/ABCDEFGH23/card',{headers:{origin,authorization:`Bearer ${token('a')}`}}),bindings)).json();expect(current).toMatchObject({stage:body.card.stage,basedOnCount:body.card.basedOnCount,items:body.card.items,nextAction:body.card.nextAction});
+  expect(await count('past_cards')).toBe(4);expect(await count('notification_subscriptions')).toBe(0);expect(await count('consensus_cards')).toBe(1);
  });
+ it('rejects the last submission when host close wins the race',async()=>{
+  let signal!:()=>void,release!:()=>void,first=true;const started=new Promise<void>(r=>{signal=r}),gate=new Promise<void>(r=>{release=r});
+  const delayed=new Proxy(env.DB,{get(target,prop){if(prop==='batch')return async (...args:Parameters<D1Database['batch']>)=>{if(first){first=false;signal();await gate}return target.batch(...args)};const v=Reflect.get(target,prop,target);return typeof v==='function'?v.bind(target):v}});
+  const pending=worker.fetch(submit('d'),{...bindings,DB:delayed});await started;
+  const host=await worker.fetch(close(),bindings);expect(host.status).toBe(200);const body=await host.json() as {card:{stage:string;basedOnCount:number;items:unknown;nextAction:string}};
+  expect(body).toMatchObject({closeReason:'host_closed',card:{stage:'final',basedOnCount:3}});release();
+  const last=await pending;expect(last.status).toBe(409);expect(await last.json()).toMatchObject({code:'room_closed'});
+  const current=await (await worker.fetch(new Request('https://api.test/v1/rooms/ABCDEFGH23/card',{headers:{origin,authorization:`Bearer ${token('a')}`}}),bindings)).json();expect(current).toMatchObject({stage:body.card.stage,basedOnCount:body.card.basedOnCount,items:body.card.items,nextAction:body.card.nextAction});
+  expect(await count('past_cards')).toBe(3);expect(await count('notification_subscriptions')).toBe(0);expect(await count('consensus_cards')).toBe(1);
+ });
+
 });
