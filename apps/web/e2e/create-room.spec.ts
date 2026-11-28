@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { mockDestinations } from './destinations';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,content-type,idempotency-key', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS' };
 test('테마를 골라 이름과 인원을 적고 방을 만든다', async ({ page }) => {
+  await mockDestinations(page);
   await page.setViewportSize({ width: 360, height: 800 });
   await page.route('**/v1/themes', route => route.fulfill({ json: { themes: [{ themeId: 'travel', name: '여행', questionSetVersion: 1 }] }, headers: cors }));
   await page.route('**/v1/rooms', route => route.request().method() === 'OPTIONS' ? route.fulfill({ status: 204, headers: cors }) : route.fulfill({ status: 201, headers: cors, json: { roomCode: 'ABCDEFGH23', gatheringName: '제주 3박', partySize: 4, theme: { themeId: 'travel', name: '여행' } } }));

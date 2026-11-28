@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { mockDestinations } from './destinations';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,content-type,idempotency-key', 'Access-Control-Allow-Methods': 'GET,POST,OPTIONS' };
 const room = { roomCode: 'ABCDEFGH23', gatheringName: '제주 3박', theme: { themeId: 'travel', name: '여행' }, partySize: 4, submittedCount: 1, isFull: false, status: 'open', myRole: 'none', mySubmitted: false, asOf: '2026-11-28T09:30:00Z' };
 async function enter(page: Page) {
@@ -12,6 +13,7 @@ test('방 소개에서 닉네임을 적어 입장한다', async ({ page }) => {
     if (route.request().method() === 'POST') return route.fulfill({ status: 201, headers: cors, json: { myRole: 'member', mySubmitted: false } });
     return route.fulfill({ headers: cors, json: room });
   });
+  await mockDestinations(page);
   await enter(page);
   await expect(page.getByText('인원 4명', { exact: true })).toBeVisible(); await expect(page.getByText('1명 답했어요', { exact: true })).toBeVisible();
   await expect(page.getByText('ABCDEFGH23')).toHaveCount(0);
