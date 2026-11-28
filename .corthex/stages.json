@@ -52,6 +52,40 @@
           "date": "2026-11-28"
         }
       ]
+    },
+    "03-user-flow": {
+      "state": "in_progress",
+      "checks": [
+        {
+          "level": "info",
+          "message": "FL 15개(FL-001~015), REQ 82/82 연결(단계 77, 공통 5), diagram-check 0건. 체크포인트 질문 2개 답 대기(checkpoint-03.md)",
+          "at": "2026-11-28"
+        },
+        {
+          "level": "info",
+          "message": "F-4: 기능성 알림 발송에 x-anon-key(식별키)가 필요해 REQ-074와 부딪힘, 04 질문 3",
+          "at": "2026-11-28"
+        }
+      ],
+      "next": "checkpoint-03.md 질문 1·2의 답(오랑이 위임, 질문 2 1번은 01 변경이라 위임 밖일 수 있음) → 통과 기록",
+      "updated": "2026-11-28T15:00:00+09:00"
+    },
+    "04-functional-spec": {
+      "state": "in_progress",
+      "checks": [
+        {
+          "level": "info",
+          "message": "SPEC 38행(active 34, 질문 대기 4), REQ 82/82·FL 15/15 연결, 기능 Must 중 SPEC 없음 0. 체크포인트 질문 3개 답 대기(checkpoint-04.md)",
+          "at": "2026-11-28"
+        },
+        {
+          "level": "info",
+          "message": "F-4~F-7은 공식 개발자센터 검색 요약만 봄, 06 API 전에 본문 확인",
+          "at": "2026-11-28"
+        }
+      ],
+      "next": "checkpoint-04.md 질문 1~3의 답 → 질문 대기 4행 고치고 명세 고정 기록 → 05 ERD",
+      "updated": "2026-11-28T15:00:00+09:00"
     }
   }
 }

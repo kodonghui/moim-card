@@ -1,6 +1,6 @@
 # 모임 합의 카드(가칭): 요구사항 (02 PRD)
 
-상태: **범위 고정 통과**(DEC-008~013, 2026-11-28), NEXUS 확정(버전 고정) 대기. 체크포인트 질문은 [checkpoint-02.md](checkpoint-02.md)에 있어요. 입력은 [01 도메인 설계](../01-domain/domain.md)(CTX-001~006, TERM-001~042, 승인 main `9b5e401`)와 [00 조사](../00-research/)예요.
+상태: **범위 고정 통과**(DEC-008~013, 2026-11-28), **단계 통과**(NEXUS 확정 없이, DEC-014, 승인 main `20d6423`). 체크포인트 질문은 [checkpoint-02.md](checkpoint-02.md)에 있어요. 입력은 [01 도메인 설계](../01-domain/domain.md)(CTX-001~006, TERM-001~042, 승인 main `9b5e401`)와 [00 조사](../00-research/)예요.
 
 - 문장 형식: EARS(Easy Approach to Requirements Syntax, 요구사항 문장을 다섯 가지 틀 중 하나로 쓰는 방법). 틀은 항상(ubiquitous) · 사건(event, "~하면") · 상태(state, "~인 동안") · 원치 않는 일(unwanted, "~이면 … 하지 않아야") · 선택 기능(optional, "~를 넣는 경우")이에요. 요구사항 하나에 "해야 해요"는 하나예요.
 - 우선순위: MoSCoW(Must 꼭, Should 되도록, Could 여유가 있으면). 첫 버전 범위는 Must와 Should예요.

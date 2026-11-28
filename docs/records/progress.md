@@ -1,5 +1,13 @@
 # 진행 기록
 
+### 2026-11-28 · 03 사용자 흐름과 04 기능 명세 초안
+
+- Done: `corthex-define`의 03·04로 [03 사용자 흐름](../03-user-flow/README.md)(FL-001~015, 파일마다 Mermaid 흐름도·단계 표·실패 경로)과 [04 기능 명세](../04-functional-spec/spec.md)(공통 규칙 C-1~C-10, SPEC-001~038)를 썼어요. 체크포인트 질문은 [checkpoint-03.md](../03-user-flow/checkpoint-03.md)(질문 2개, AI가 정한 것 A-1~A-9)와 [checkpoint-04.md](../04-functional-spec/checkpoint-04.md)(질문 3개, AI가 정한 것 B-1~B-13)에 있어요. `.corthex/stages.json`에 03·04를 `in_progress`로 더했고, 02 진행 기록이 남긴 낡은 줄(requirements.md·checkpoint-02.md 머리의 "NEXUS 확정 대기/다음")을 DEC-014대로 고쳤어요.
+- Why: 02 통과(DEC-014) 뒤 다음 단계예요. 토링이 작업 지시(2026-11-28): DDD·목업이 아닌 단계는 NEXUS 확정 없이 오랑이 위임 답으로 통과를 기록해요.
+- Result: REQ 82개가 모두 흐름(단계 77개, 공통 5개)과 SPEC 행에 연결돼요. SPEC 38행 중 34행은 active, 4행(SPEC-002, SPEC-024~026)은 질문 대기예요. 명세를 쓰다 승인된 문장과 부딪히는 것 두 가지를 찾았어요: REQ-041을 글자대로 하면 요청마다 코드 교환(04 질문 2), 기능성 알림 발송에 식별키가 필요해 REQ-074·01 CTX-004 규칙과 부딪힘(04 질문 3). 03에서는 방장이 링크를 보내기 전에 앱을 닫으면 열린 방으로 돌아갈 수 없는 빈틈을 찾았어요(03 질문 2). 03 질문 2의 1번과 04 질문 3의 1번은 01을 바꿔 위임 밖일 수 있어요.
+- Checked: 흐름 정의 스크립트로 결정 가지(2개 이상, 이름 있음), 흐름의 끝, 닿지 않는 단계 0개를 봤어요. `diagram-check.py`는 흐름 15개와 흐름 지도 모두 0건이에요. spec 검사 스크립트로 REQ 82/82, FL 15/15, 기능 Must 중 SPEC 없음 0개, 모든 행의 Given·When·Then과 예외 종류를 봤어요. term-check 0건이에요. 공식 개발자센터 검색으로 F-4(알림 발송은 `x-anon-key` 헤더), F-5(`File.saveBase64`), F-6(코드 교환 API, 5분 한 번), F-7(`requestNotificationAgreement`)을 찾았지만 검색 요약만 봤고 페이지 본문은 열지 않았어요(06 전에 확인). 01 domain.md는 바꾸지 않았어요(목업 단계 때 사용자님 확인과 함께 고침).
+- Next: 토링이가 03·04 체크포인트 질문의 답을 받아 줌 → 답을 DEC-015부터 기록하고 질문 대기 행을 고침 → PR 병합(토링이) → `push moim-card` → 05 ERD.
+
 ### 2026-11-28 · 02 PRD 체크포인트 통과 기록
 
 - Done: 사용자님 지시 "걍 해 꼭 넥서스에서 해야대?"(Orca 항목 244, 이벤트 e4307)를 DEC-014로 기록하고, `.corthex/stages.json`의 02-prd를 `done`으로 바꾸고 체크포인트(승인 근거 DEC-008~014, 버전 main `20d6423`)를 넣었어요. 이 기록 파일 셋만 바꿨어요.
