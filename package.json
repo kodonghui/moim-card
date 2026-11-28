@@ -1,0 +1,14 @@
+{
+  "name": "moim-card",
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run tests && pnpm -r test",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vitest": "3.2.4"
+  }
+}
