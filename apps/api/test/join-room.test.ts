@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:test';
-import {beforeEach,describe,expect,it} from 'vitest';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {hashToken} from '../src/session';
 import worker from '../src/worker';
 const origin='https://example.test', now=Math.floor(Date.now()/1000), key='12345678-1234-1234-1234-123456789abc',tokenA='a'.repeat(43),tokenB='b'.repeat(43),userA='a'.repeat(26),userB='b'.repeat(26);
@@ -15,6 +15,8 @@ beforeEach(async()=>{
  await env.DB.prepare("INSERT INTO question_sets (theme_id,version,status,default_next_action,content_sha256,published_at) VALUES ('trip',1,'published','정해요',?,?)").bind('c'.repeat(64),now).run();
  await env.DB.prepare("INSERT INTO rooms (code,gathering_name,party_size,question_set_id,participant_count,created_at,expires_at) VALUES ('ABCDEFGH23','여행',8,1,0,?,?)").bind(now,now+2592000).run();
 });
+beforeEach(()=>{vi.spyOn(Date,'now').mockReturnValue(now*1000)});
+afterEach(()=>vi.restoreAllMocks());
 describe('TASK-019 API-005 join room',()=>{
  it('creates and replays membership, and returns 200 to an existing member',async()=>{
   const first=await worker.fetch(req(),bindings);expect(first.status).toBe(201);expect(await first.json()).toEqual({roomCode:'ABCDEFGH23',myRole:'member',mySubmitted:false});
