@@ -18,17 +18,23 @@
           "nexus": "nk_000000000002",
           "where": "docs/records/decisions.md (DEC-007), NEXUS 체크포인트 nk_000000000002",
           "date": "2026-11-28"
+        },
+        {
+          "approved": "01 고침(변경 절차): 리드 모델 '내 방 목록'(DEC-018), CTX-004 식별키 예외와 CTX-006 정책·이벤트 '알림 신청 삭제됨'(DEC-019), 응답 규칙의 마감 뒤 누구나 보기 예외(DEC-013), 핫스팟 H-04~H-14 상태, 새 용어 TERM-043~046. 사용자님이 Orca에서 말로 승인(e4225 \"누구나 보기(추천)\", e4355 \"더해(추천)\"·\"암호화해 두고 방 끝나면 삭제(추천)\"), NEXUS 재확정 없이 기록(e4307 \"걍 해 꼭 넥서스에서 해야대?\"). 버전은 PR #7 병합 커밋",
+          "by": "the owner",
+          "where": "docs/records/decisions.md (DEC-013, DEC-018, DEC-019), Orca 항목 244·249",
+          "date": "2026-11-28"
         }
       ],
       "next": "02 PRD: domain.md 6절의 열린 핫스팟(추측 1~9 포함, H-04·H-06은 요구사항 전에 답 필요)과 review in stage 02 규칙을 다시 봄",
-      "updated": "2026-11-27T18:05:00+00:00"
+      "updated": "2026-11-28T17:00:00+09:00"
     },
     "02-prd": {
       "state": "done",
       "checks": [
         {
           "level": "info",
-          "message": "REQ 82개(Must 67, Should 15), 모두 active. 체크포인트는 DEC-008~013 답과 DEC-014(NEXUS 확정 없이 통과)로 통과",
+          "message": "REQ 84개(Must 68, Should 16), 모두 active. 02 통과(DEC-008~014) 뒤 REQ-083·084를 더하고 REQ-074를 바꿈(DEC-018·019, 4.6절)",
           "at": "2026-11-28"
         },
         {
@@ -43,12 +49,63 @@
         }
       ],
       "next": "03 사용자 흐름(FL ID). 그 전에 01 domain.md 응답 규칙(DEC-013)·핫스팟·용어 갱신과 01 다시 확정",
-      "updated": "2026-11-28T11:30:00+09:00",
+      "updated": "2026-11-28T17:00:00+09:00",
       "checkpoints": [
         {
           "approved": "02 PRD 범위 고정 체크포인트 통과(REQ-001~082, main 20d6423). 범위 고정과 질문 1·2·3·5는 오랑이가 사용자님 위임으로 추천안 승인(DEC-008~012, 위임 근거 2026-11-23 \"추천 모두 승인\", 2026-11-27 \"DDD랑 목업때만\"), 질문 4는 사용자님 \"누구나 보기(추천)\"(DEC-013). NEXUS 확정 없이 위임 승인으로 통과(DEC-014, 사용자님 \"걍 해 꼭 넥서스에서 해야대?\", Orca 항목 244 e4307)",
           "by": "the owner (delegated: scope and questions 1-3, 5 answered by the orchestrator agent on the owner's behalf; question 4 answered by the owner)",
           "where": "docs/records/decisions.md (DEC-008~014)",
+          "date": "2026-11-28"
+        },
+        {
+          "approved": "02 변경(변경 절차): REQ-083 더함(DEC-018), REQ-084 더함과 REQ-074 뜻 바뀜(DEC-019), REQ-041 비고(DEC-017). 요구사항 84개(Must 68, Should 16), requirements.md 4.6절",
+          "by": "the owner (REQ-083, REQ-074, REQ-084); the orchestrator agent on the owner's behalf (REQ-041 note)",
+          "where": "docs/records/decisions.md (DEC-017~019)",
+          "date": "2026-11-28"
+        }
+      ]
+    },
+    "03-user-flow": {
+      "state": "done",
+      "checks": [
+        {
+          "level": "info",
+          "message": "FL 16개(FL-001~016), REQ 84/84 연결(단계 79, 공통 5), diagram-check 0건",
+          "at": "2026-11-28"
+        }
+      ],
+      "next": "07 사이트맵 뒤 단계에 SCR ID를 더함",
+      "updated": "2026-11-28T17:00:00+09:00",
+      "checkpoints": [
+        {
+          "approved": "03 사용자 흐름 체크포인트 통과. 질문 1(흐름 15개 그린 대로, PR #7 커밋 5de0487)은 오랑이가 사용자님 위임으로 추천안 승인(DEC-015, 위임 근거 2026-11-23 \"추천 모두 승인\", 2026-11-27 \"DDD랑 목업때만\"). 질문 2(열린 방 목록, FL-016 더함)는 사용자님 \"더해(추천)\"(DEC-018, Orca 항목 249 e4355). NEXUS 확정 없이 통과(DEC-014)",
+          "by": "the owner (question 2); the orchestrator agent on the owner's behalf (question 1)",
+          "where": "docs/records/decisions.md (DEC-015, DEC-018)",
+          "date": "2026-11-28"
+        }
+      ]
+    },
+    "04-functional-spec": {
+      "state": "done",
+      "checks": [
+        {
+          "level": "info",
+          "message": "SPEC 39행 모두 active, REQ 84/84·FL 16/16 연결, 기능 Must 중 SPEC 없음 0",
+          "at": "2026-11-28"
+        },
+        {
+          "level": "info",
+          "message": "F-1~F-7 미확인 사실이 06 API에서 다르게 나오면 그 행만 고치고 결정으로 기록(DEC-016)",
+          "at": "2026-11-28"
+        }
+      ],
+      "next": "05 ERD(TBL ID): 세션 토큰 해시(DEC-017), 알림 신청 암호문(DEC-019), 지난 카드 요약, 성향 테이블 없음(REQ-029)",
+      "updated": "2026-11-28T17:00:00+09:00",
+      "checkpoints": [
+        {
+          "approved": "04 기능 명세 체크포인트 통과(명세 고정). 질문 1(SPEC-001~038 고정, PR #7 커밋 5de0487)·질문 2(진입 때 코드 교환 + 서버 세션 토큰)는 오랑이가 사용자님 위임으로 추천안 승인(DEC-016, DEC-017). 질문 3(알림 식별키를 신청 동안만 암호화해 두고 방이 끝나면 삭제, SPEC-024~026 active, SPEC-039 더함)은 사용자님 \"암호화해 두고 방 끝나면 삭제(추천)\"(DEC-019, Orca 항목 249 e4355). NEXUS 확정 없이 통과(DEC-014)",
+          "by": "the owner (question 3); the orchestrator agent on the owner's behalf (questions 1-2)",
+          "where": "docs/records/decisions.md (DEC-016, DEC-017, DEC-019)",
           "date": "2026-11-28"
         }
       ]
