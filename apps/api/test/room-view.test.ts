@@ -25,6 +25,13 @@ describe('TASK-018 API-004 room view',()=>{
   await env.DB.prepare("UPDATE rooms SET status='closed',close_reason='host_closed',closed_at=?,submitted_count=1 WHERE id=1").bind(now).run();
   const data=await (await worker.fetch(req(),bindings)).json();expect(data).toMatchObject({status:'closed',myRole:'host',mySubmitted:true,submittedCount:1});expect(JSON.stringify(data)).not.toContain('비밀');
  });
+ it('returns member role and permits a nonparticipant to view a closed room',async()=>{
+  await env.DB.prepare("INSERT INTO participants (room_id,user_id,role,nickname,joined_at) VALUES (1,?,'member','이름',?)").bind(user,now).run();
+  expect(await (await worker.fetch(req(),bindings)).json()).toMatchObject({myRole:'member',mySubmitted:false});
+  await env.DB.prepare('DELETE FROM participants').run();
+  await env.DB.prepare("UPDATE rooms SET status='closed',close_reason='host_closed',closed_at=?").bind(now).run();
+  const r=await worker.fetch(req(),bindings);expect(r.status).toBe(200);expect(await r.json()).toMatchObject({status:'closed',myRole:'none',mySubmitted:false});
+ });
  it('reports full only at eight participants',async()=>{
   await env.DB.prepare('UPDATE rooms SET participant_count=8 WHERE id=1').run();
   expect(await (await worker.fetch(req(),bindings)).json()).toMatchObject({isFull:true});
