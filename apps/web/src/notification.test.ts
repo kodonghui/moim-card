@@ -4,8 +4,14 @@ const sdk = vi.hoisted(() => {
   return { request };
 });
 vi.mock('@apps-in-toss/web-framework', () => ({ Notification: { requestAgreement: sdk.request } }));
-import { requestAgreement, withConsent } from './notification';
+import { isNotificationConfigured, requestAgreement, withConsent } from './notification';
 beforeEach(() => { vi.clearAllMocks(); });
+it('템플릿이 없거나 공백이면 알림 버튼을 숨긴다', () => {
+  vi.stubEnv('VITE_NOTIFICATION_TEMPLATE_CODE', ''); expect(isNotificationConfigured()).toBe(false);
+  vi.stubEnv('VITE_NOTIFICATION_TEMPLATE_CODE', '   '); expect(isNotificationConfigured()).toBe(false);
+  vi.stubEnv('VITE_NOTIFICATION_TEMPLATE_CODE', 'example-template'); expect(isNotificationConfigured()).toBe(true);
+  vi.unstubAllEnvs();
+});
 it('미지원 버전은 동의 창과 신청을 부르지 않는다', async () => {
   sdk.request.isSupported.mockReturnValue(false); const submit = vi.fn();
   expect(await withConsent(await requestAgreement('template'), submit)).toBe('unsupported');

@@ -91,3 +91,5 @@ div[role="alert"] h2 { font-size: var(--font-size-heading); margin: 0; }
 .axis { display: flex; gap: var(--space-2); }
 .axis span { flex: 1; text-align: center; background: var(--color-bg-subtle); padding: var(--space-2); border-radius: var(--radius-chip); }
 .axis .axis-selected { background: var(--color-accent-subtle); color: var(--color-accent-on-subtle); }
+
+.profile-axis h2 { font-size: var(--font-size-small); margin: var(--space-2) 0; }

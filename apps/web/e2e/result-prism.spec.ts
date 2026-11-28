@@ -19,7 +19,7 @@ async function prism(page: Page, endpoint: string, choices: Selection[]) {
 }
 async function enter(page: Page) { await page.goto('/room/result?room=ABCDEFGH23'); }
 async function mockSdk(page: Page) {
-  await page.route('**/src/notification.ts*', route => route.fulfill({ contentType: 'application/javascript', body: "export async function requestAgreement() { return 'newAgreement'; } export async function withConsent(result, callback) { return callback(); }" }));
+  await page.route('**/src/notification.ts*', route => route.fulfill({ contentType: 'application/javascript', body: "export function isNotificationConfigured() { return true; } export async function requestAgreement() { return 'newAgreement'; } export async function withConsent(result, callback) { return callback(); }" }));
   await page.route('**/src/session.ts*', route => route.fulfill({ contentType: 'application/javascript', body: `import { ApiClient } from '/src/api.ts';
     let count = 0; export const sessionState = { reauthenticationFailed: false };
     export async function authCode() { return String(++count).padStart(32, '0'); }
@@ -29,7 +29,7 @@ async function mockSdk(page: Page) {
 test('Prism 성향과 응답 현황을 표시한다', async ({ page }) => {
   await prism(page, '/my-profile', [{ code: 200, example: 'two-axes' }]); await prism(page, '', [{ code: 200, example: 'open-host' }]); await enter(page);
   await expect(page.locator('.axis')).toHaveCount(2); await expect(page.getByText(/4명 중 3명 답했어요/)).toBeVisible();
-  await expect(page.getByRole('button', { name: '카드 보기' })).toBeVisible(); await expect(page.getByRole('button', { name: '알림 받기' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '카드 보기' })).toBeVisible(); await expect(page.getByRole('button', { name: '알림 받기' })).toHaveCount(0);
 });
 test('응답 현황 오류에도 불러온 성향을 유지하고 재시도한다', async ({ page }) => {
   await prism(page, '/my-profile', [{ code: 200, example: 'two-axes' }]); await prism(page, '', [{ code: 500 }, { code: 200, example: 'open-host' }]); await enter(page);
@@ -44,7 +44,7 @@ test('결과 새로고침 중에는 이전 현황과 진행 상태를 함께 표
 test('마감된 방에서는 알림을 표시하지 않고 최종 카드로 간다', async ({ page }) => {
   await prism(page, '/my-profile', [{ code: 200, example: 'three-axes' }]); await prism(page, '', [{ code: 200, example: 'closed' }]); await enter(page);
   await expect(page.getByText('방이 마감됐어요')).toBeVisible(); await expect(page.getByRole('button', { name: '알림 받기' })).toHaveCount(0);
-  await page.getByRole('button', { name: '카드 보기' }).click(); await expect(page).toHaveURL(/\/room\/final$/);
+  await page.getByRole('button', { name: '최종 카드 보기' }).click(); await expect(page).toHaveURL(/\/room\/final$/);
 });
 for (const [code, example, heading] of [[403, 'origin-not-allowed', '지금은 쓸 수 없어요'], [404, 'room-not-found', '이 방은 없거나 보관 기간이 지났어요']] as const) test(`성향 ${code} 안내`, async ({ page }) => {
   await prism(page, '/my-profile', [{ code, example }]); await prism(page, '', [{ code: 200, example: 'open-host' }]); await enter(page);

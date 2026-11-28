@@ -2,7 +2,7 @@ import React from 'react';
 import { Button } from '@toss/tds-mobile';
 import { ApiError, formatAsOf, onVisible } from './api';
 import { entryContext } from './entry-context';
-import { requestAgreement, withConsent } from './notification';
+import { isNotificationConfigured, requestAgreement, withConsent } from './notification';
 import { navigate } from './routes';
 import { roomContext, type Profile } from './room-context';
 import { authCode, client, refreshSession, sessionState } from './session';
@@ -70,12 +70,12 @@ export function Result() {
     }
   }
   if (permission) return <main className="entry"><section className="entry-content"><h1>지금은 쓸 수 없어요</h1></section></main>;
-  if (missing) return <main className="create"><h1>이 방은 없거나 보관 기간이 지났어요</h1><Button display="block" onClick={() => navigate('/rooms/new')}>방 만들기</Button></main>;
-  return <main className="create"><h1>{roomContext.nicknameRoom === code && roomContext.nickname ? `${roomContext.nickname} 님의 모임 성향` : '내 모임 성향'}</h1>{alreadySubmitted && <p role="status">이미 답했어요</p>}
+  if (missing) return <main className="create">{room?.status === 'closed' && <div className="room-notice"><p>방이 마감됐어요</p></div>}<h1>이 방은 없거나 보관 기간이 지났어요</h1><Button display="block" onClick={() => navigate('/rooms/new')}>방 만들기</Button></main>;
+  return <main className="create">{room?.status === 'closed' && <div className="room-notice"><p>방이 마감됐어요</p></div>}<h1>{roomContext.nicknameRoom === code && roomContext.nickname ? `${roomContext.nickname} 님의 모임 성향` : '내 모임 성향'}</h1>{alreadySubmitted && <p role="status">이미 답했어요</p>}
     {error !== undefined && <div role="alert"><p>잠시 뒤 다시 해 주세요</p>{error && <p>오류 번호 {error}</p>}<button className="link-button" onClick={() => void load()}>다시 시도</button></div>}
     {!profile && loading && <div className="skeletons" role="status"><span /><span /><span /><span className="sr-only">불러오고 있어요</span></div>}
-    {profile && <><p>{profile.summary}</p>{profile.axes.map(axis => <section key={axis.axis}><h2>{labels[axis.axis]}</h2><div className="axis">{(['low', 'balanced', 'high'] as const).map((band, i) => <span className={axis.band === band ? 'axis-selected' : ''} key={band}>{['낮음', '균형', '높음'][i]}{axis.band === band ? ' · 선택됨' : ''}</span>)}</div></section>)}</>}
-    {room && <>{room.status === 'closed' && <p>방이 마감됐어요</p>}<div className="as-of"><span>{room.partySize}명 중 {room.submittedCount}명 답했어요 · {formatAsOf(room.asOf)}{refreshing && <> · 다시 불러오는 중 <span aria-hidden="true" className="refresh-spinner" /></>}</span>{!refreshing && <button className="link-button" onClick={() => void load()}>새로고침</button>}</div><Button display="block" onClick={() => navigate(room.status === 'closed' ? '/room/final' : '/room/card')}>카드 보기</Button>
-    {room.status === 'open' && <>{notify === 'done' || notify === 'already' ? <p>{notify === 'already' ? '이미 알림을 신청했어요' : '알림을 신청했어요. 친구가 답을 마치면 알려 드려요'}</p> : <Button display="block" variant="weak" loading={notify === 'loading'} disabled={notify === 'loading' || seconds > 0} onClick={() => void subscribe()}>알림 받기</Button>}{notify === 'update' && <p>토스 앱을 업데이트하면 알림을 받을 수 있어요</p>}{notify === 'error' && <div role="alert"><p>알림을 신청하지 못했어요</p><button className="link-button" disabled={seconds > 0} onClick={() => void subscribe()}>{seconds ? `다시 시도 (${seconds}초)` : '다시 시도'}</button></div>}</>}</>}
+    {profile && <><p>{profile.summary}</p>{profile.axes.map(axis => <section className="profile-axis" key={axis.axis}><h2>{labels[axis.axis]}</h2><div className="axis" role="group" aria-label={`${labels[axis.axis]}: ${{ low: '낮음', balanced: '균형', high: '높음' }[axis.band]}`} >{(['low', 'balanced', 'high'] as const).map((band, i) => <span className={axis.band === band ? 'axis-selected' : ''} key={band}>{['낮음', '균형', '높음'][i]}</span>)}</div></section>)}</>}
+    {room && <><div className="as-of"><span>{room.partySize}명 중 {room.submittedCount}명 답했어요 · {formatAsOf(room.asOf)}{refreshing && <> · 다시 불러오는 중 <span aria-hidden="true" className="refresh-spinner" /></>}</span>{!refreshing && <button className="link-button" onClick={() => void load()}>새로고침</button>}</div><Button display="block" onClick={() => navigate(room.status === 'closed' ? '/room/final' : '/room/card')}>{room.status === 'closed' ? '최종 카드 보기' : '카드 보기'}</Button>
+    {room.status === 'open' && isNotificationConfigured() && <>{notify === 'done' || notify === 'already' ? <div className="room-notice"><p>{notify === 'already' ? '이미 알림을 신청했어요' : '알림을 신청했어요. 친구가 답을 마치면 알려 드려요'}</p></div> : <Button display="block" variant="weak" loading={notify === 'loading'} disabled={notify === 'loading' || seconds > 0} onClick={() => void subscribe()}>알림 받기</Button>}{notify === 'update' && <p>토스 앱을 업데이트하면 알림을 받을 수 있어요</p>}{notify === 'error' && <div role="alert"><p>알림을 신청하지 못했어요</p><button className="link-button" disabled={seconds > 0} onClick={() => void subscribe()}>{seconds ? `다시 시도 (${seconds}초)` : '다시 시도'}</button></div>}</>}</>}
   </main>;
 }

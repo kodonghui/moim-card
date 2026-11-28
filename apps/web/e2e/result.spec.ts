@@ -10,9 +10,10 @@ test('결과를 표시하고 템플릿 미설정 시 신청하지 않는다', as
   });
   await page.goto('/room/result?room=ABCDEFGH23');
   await expect(page.getByText('차근차근 정해요')).toBeVisible();
-  await expect(page.getByText('균형 · 선택됨')).toBeVisible();
+  await expect(page.getByRole('group', { name: '계획 속도: 균형' })).toBeVisible();
+  const sizes = await page.evaluate(() => ({ title: parseFloat(getComputedStyle(document.querySelector('h1')!).fontSize), axis: parseFloat(getComputedStyle(document.querySelector('.profile-axis h2')!).fontSize) }));
+  expect(sizes.axis).toBeLessThan(sizes.title);
   if (process.env.CAPTURE_RESULT) await page.screenshot({ path: '../../docs/10-wbs/captures/task-042.png', fullPage: true });
-  await page.getByRole('button', { name: '알림 받기' }).click();
-  await expect(page.getByText('알림을 신청하지 못했어요')).toBeVisible();
+  await expect(page.getByRole('button', { name: '알림 받기' })).toHaveCount(0);
   expect(subscriptions).toBe(0);
 });

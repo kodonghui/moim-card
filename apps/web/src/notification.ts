@@ -1,4 +1,5 @@
 import { Notification } from '@apps-in-toss/web-framework';
+export function isNotificationConfigured(): boolean { return Boolean(import.meta.env.VITE_NOTIFICATION_TEMPLATE_CODE?.trim()); }
 export type Agreement = 'newAgreement' | 'alreadyAgreed' | 'agreementRejected';
 export function requestAgreement(templateCode: string): Promise<Agreement | 'unsupported'> {
   if (!Notification.requestAgreement.isSupported()) return Promise.resolve('unsupported');
