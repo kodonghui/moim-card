@@ -4,7 +4,7 @@ import worker from '../src/worker';
 
 const origin = 'https://example.test';
 const now = Math.floor(Date.now()/1000);
-const binding = (exchange: (req: Request) => Response | Promise<Response>) => ({DB:env.DB, USER_HMAC_KEY:'test-only-secret', ORIGIN_PUBLIC:origin, ORIGIN_PRIVATE:'https://private.test', TOSS:{fetch:async (r: Request) => exchange(r)}});
+const binding = (exchange: (req: Request) => Response | Promise<Response>) => ({DB:env.DB, USER_HMAC_KEY:'x'.repeat(32), ORIGIN_PUBLIC:origin, ORIGIN_PRIVATE:'https://private.test', TOSS:{fetch:async (r: Request) => exchange(r)}});
 const success = () => Response.json({resultType:'SUCCESS',success:{anonKey:'anonymous-key'}});
 const request = (body: string, headers: Record<string,string> = {}) => new Request('https://api.test/v1/sessions', {method:'POST', headers:{origin, 'content-type':'application/json', ...headers},body});
 const count = async (table: string) => (await env.DB.prepare(`SELECT count(*) AS n FROM ${table}`).first<{n:number}>())!.n;
@@ -33,6 +33,7 @@ describe('TASK-013 API-001 sessions', () => {
     for (const body of ['{}','{"authCode":""}','{"authCode":"a b"}','not json']) expect((await worker.fetch(request(body),e)).status).toBe(400);
     expect((await worker.fetch(request('{"authCode":"ok"}',{origin:'https://bad.test'}),e)).status).toBe(403);
     expect(call).not.toHaveBeenCalled();
+    expect(await (await worker.fetch(request('{}'),e)).json()).toMatchObject({errors:[{field:'authCode',reason:'required'}]});
   });
   it('returns 429 and Retry-After for application and Toss limits', async () => {
     const call = vi.fn(success), e = binding(call);
@@ -43,9 +44,9 @@ describe('TASK-013 API-001 sessions', () => {
     const remote = await worker.fetch(request('{"authCode":"ok"}'),binding(() => Response.json({resultType:'FAIL',error:{errorCode:4095}})));
     expect(remote.status).toBe(429); expect(remote.headers.get('Retry-After')).toBe('60');
   });
-  it('returns a problem response for unexpected database errors', async () => {
-    const e = binding(success); e.USER_HMAC_KEY = '';
+  it('rejects an invalid HMAC key before calling Toss or consuming quota', async () => {
+    const call = vi.fn(success), e = binding(call); e.USER_HMAC_KEY = '';
     const response = await worker.fetch(request('{"authCode":"ok"}'),e);
-    expect(response.status).toBe(500); expect(await response.json()).toMatchObject({code:'internal'});
+    expect(response.status).toBe(500); expect(await response.json()).toMatchObject({code:'internal'}); expect(call).not.toHaveBeenCalled(); expect(await count('rate_counters')).toBe(0);
   });
 });

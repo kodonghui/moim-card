@@ -23,9 +23,14 @@ function token(): string {
 }
 
 export async function createSession(request: Request, env: SessionEnv, now = Math.floor(Date.now() / 1000)): Promise<Response> {
+  if (typeof env.USER_HMAC_KEY !== 'string' || new TextEncoder().encode(env.USER_HMAC_KEY).length < 32) return problemResponse('internal');
   let body: unknown;
   try { body = await request.json(); } catch { return problemResponse('invalid_request'); }
-  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 1 || !('authCode' in body) || typeof body.authCode !== 'string' || !/^[\x21-\x7e]{1,512}$/.test(body.authCode)) return problemResponse('validation_failed');
+  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).some(k => k !== 'authCode') || !('authCode' in body) || typeof body.authCode !== 'string' || !/^[\x21-\x7e]{1,512}$/.test(body.authCode)) {
+    const reason = !body || typeof body !== 'object' || !('authCode' in body) || body.authCode === '' ? 'required' : typeof body.authCode === 'string' && body.authCode.length > 512 ? 'too_long' : 'invalid_format';
+    const response = problemResponse('validation_failed');
+    return Response.json({...await response.json() as object, errors:[{field:'authCode', reason}]}, {status:400,headers:{'content-type':'application/problem+json'}});
+  }
   const minute = Math.floor(now / 60) * 60;
   const reservation = await env.DB.prepare("INSERT INTO rate_counters (scope,subject,window_start,count) VALUES ('toss_api_app','app',?,1) ON CONFLICT(scope,subject,window_start) DO UPDATE SET count=count+1 WHERE count<3000 RETURNING count").bind(minute).first<{count:number}>();
   if (!reservation) return problemResponse('rate_limited', undefined, {'Retry-After': String(minute + 60 - now)});
