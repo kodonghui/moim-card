@@ -11,6 +11,7 @@ import { Questions } from './Questions';
 import { Result } from './Result';
 import { CardScreen } from './CardScreen';
 import { FinalCard } from './FinalCard';
+import { PastCards, PastCardDetail } from './PastCards';
 import './style.css';
 
 
@@ -27,6 +28,8 @@ function App() {
   if (path === '/room/result') return <Result />;
   if (path === '/room/card') return <CardScreen />;
   if (path === '/room/final') return <FinalCard />;
+  if (path === '/past-cards') return <PastCards />;
+  if (matchRoute(path) === '/past-cards/:pastCardId') return <PastCardDetail id={path.split('/')[2]} />;
   return <main><p role="status">{matchRoute(path) ? '확인하고 있어요' : '화면을 찾을 수 없어요'}</p></main>;
 }
 createRoot(document.getElementById('root')!).render(<TDSMobileAITProvider brandPrimaryColor={tokens.color.accent.default.$value.hex}><App /></TDSMobileAITProvider>);

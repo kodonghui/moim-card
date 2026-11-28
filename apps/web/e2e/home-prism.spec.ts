@@ -56,6 +56,7 @@ test('401 재확인에 실패하면 확인 오류 화면으로 이동한다', as
 test('메뉴와 방 만들기는 정의된 화면 경로로 이동한다', async ({ page }) => {
   await prism(page, [{ code: 200, example: 'empty' }]);
   await page.route('**/v1/themes', route => route.fulfill({ headers: { 'Access-Control-Allow-Origin': '*' }, json: { themes: [] } }));
+  await page.route('**/v1/me/past-cards*', route => route.fulfill({ headers: { 'Access-Control-Allow-Origin': '*' }, json: { pastCards: [], nextCursor: null } }));
   for (const [label, path] of [['방 만들기', '/rooms/new'], ['지난 카드', '/past-cards'], ['내 데이터 지우기', '/me/delete'], ['이용약관', '/legal/terms'], ['개인정보처리방침', '/legal/privacy']]) {
     await page.goto('/home'); await page.getByRole('button', { name: label }).click();
     await expect(page).toHaveURL(new RegExp(path + '$'));
