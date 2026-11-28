@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:test';
-import {beforeEach,describe,expect,it} from 'vitest';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {hashToken} from '../src/session';
 import worker from '../src/worker';
 const origin='https://example.test',now=Math.floor(Date.now()/1000),key='92345678-1234-1234-1234-123456789abc', submitKey='12345678-1234-1234-1234-123456789abc';
@@ -19,6 +19,8 @@ beforeEach(async()=>{
  for(const ch of ['a','b','c'])expect((await worker.fetch(submit(ch),bindings)).status).toBe(201);
  await env.DB.prepare('INSERT INTO notification_subscriptions(participant_id,room_id,anon_key_ciphertext,nonce,key_version,created_at) VALUES(1,1,?,?,1,?)').bind(new Uint8Array(17),new Uint8Array(12),now).run();
 });
+beforeEach(()=>{vi.spyOn(Date,'now').mockReturnValue(now*1000)});
+afterEach(()=>vi.restoreAllMocks());
 describe('TASK-025 API-010 host close',()=>{
  it('closes once, creates summaries and replays the same result',async()=>{
   const first=await worker.fetch(close(),bindings);expect(first.status).toBe(200);const body=await first.json();expect(body).toMatchObject({roomStatus:'closed',closeReason:'host_closed',card:{stage:'final',basedOnCount:3}});
