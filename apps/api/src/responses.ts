@@ -80,7 +80,7 @@ export async function submitResponse(request:Request,db:D1Database,now=Math.floo
     const [questions,previous]=await Promise.all([readQuestions(db,room.setId),readAnswers(db,room.id)]);
     if(previous.length!==room.submittedCount) throw new Error('stale_submission_snapshot');
     const resultProfile=await profile(db,room.setId,questions,parsed.answers);
-    const count=room.submittedCount+1, final=count===room.partySize, withCard=count>=2 && !fallback;
+    const count=room.submittedCount+1, final=count===room.partySize, withCard=count>=2 && (!fallback || final);
     const card=withCard?calculateCard(questions,[...previous,parsed.answers],room.defaultAction):null;
     const conversion=withCard && !final && room.conversionLogged===0;
     const statements=[
@@ -90,10 +90,11 @@ export async function submitResponse(request:Request,db:D1Database,now=Math.floo
     ];
     if(card) {
       statements.push(db.prepare("INSERT INTO consensus_cards(room_id,stage,based_on_count,items,next_action,computed_at,finalized_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(room_id) DO UPDATE SET stage=excluded.stage,based_on_count=excluded.based_on_count,items=excluded.items,next_action=excluded.next_action,computed_at=excluded.computed_at,finalized_at=excluded.finalized_at WHERE consensus_cards.stage='interim'").bind(room.id,final?'final':'interim',count,serializedItems(card.items),card.nextAction,now,final?now:null));
-      if(final) {
-        statements.push(db.prepare("INSERT INTO past_cards(user_id,room_ref,gathering_name,theme_name,based_on_count,summary,next_action,finalized_at) SELECT p.user_id,r.id,r.gathering_name,t.name,?,?,?,? FROM rooms r JOIN question_sets q ON q.id=r.question_set_id JOIN themes t ON t.id=q.theme_id JOIN participants p ON p.room_id=r.id JOIN responses x ON x.participant_id=p.id WHERE r.id=?").bind(count,JSON.stringify(card.items),card.nextAction,now,room.id));
-        statements.push(db.prepare('DELETE FROM notification_subscriptions WHERE room_id=?').bind(room.id));
-      }
+    }
+    if(final) {
+      if(!card)throw new Error('Final card is required');
+      statements.push(db.prepare("INSERT INTO past_cards(user_id,room_ref,gathering_name,theme_name,based_on_count,summary,next_action,finalized_at) SELECT p.user_id,r.id,r.gathering_name,t.name,?,?,?,? FROM rooms r JOIN question_sets q ON q.id=r.question_set_id JOIN themes t ON t.id=q.theme_id JOIN participants p ON p.room_id=r.id JOIN responses x ON x.participant_id=p.id WHERE r.id=?").bind(count,JSON.stringify(card.items),card.nextAction,now,room.id));
+      statements.push(db.prepare('DELETE FROM notification_subscriptions WHERE room_id=?').bind(room.id));
     }
     return {status:201,body:{roomStatus:final?'closed':'open',submittedCount:count,partySize:room.partySize,cardStage:final?'final':count>=2?'interim':'none',logConversion:conversion,profile:resultProfile},statements};
 
