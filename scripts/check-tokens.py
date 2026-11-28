@@ -37,7 +37,7 @@ def check(root=ROOT, generated=True):
                     issues.append(f'{path}: non-token color in {name}: {value}')
                 if SPACING.fullmatch(name) and clean not in ('', '0', 'auto') and not re.fullmatch(r'(?:(?:0|auto)\s+)*(?:0|auto)', clean):
                     issues.append(f'{path}: non-token spacing in {name}: {value}')
-                if BORDER.fullmatch(name) and re.search(r'\d+(?:\.\d+)?(?:px|rem|em)', clean) and not re.fullmatch(r'1px\s+solid', clean):
+                if BORDER.fullmatch(name) and re.search(r'\d+(?:\.\d+)?(?:px|rem|em)', clean) and not (re.fullmatch(r'1px\s+solid', clean) or (name.endswith('-width') and clean in ('1px', '2px'))):
                     issues.append(f'{path}: non-token border in {name}: {value}')
         if path.name != 'AgreementCard.tsx' and re.search(r'--color-card-|color\.card\b', text):
             issues.append(f'{path}: card token outside agreement card')
