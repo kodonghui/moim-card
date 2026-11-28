@@ -57,3 +57,5 @@ main { color: var(--color-text-primary); padding: var(--space-6); }
 .create-action { position: sticky; bottom: 0; background: var(--color-bg-page); padding: var(--space-4) 0; margin: var(--space-6) 0; }
 .create-action button:disabled > div:first-child { background-color: var(--color-disabled-bg) !important; }
 .create-action button:disabled span { color: var(--color-disabled-text) !important; }
+
+.create-action button:disabled { opacity: 1 !important; }

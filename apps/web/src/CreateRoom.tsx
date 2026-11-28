@@ -5,7 +5,7 @@ import { entryContext } from './entry-context';
 import { validateGatheringName, validateNickname } from './names';
 import { roomDraft, type Theme } from './room-draft';
 import { navigate } from './routes';
-import { client } from './session';
+import { client, sessionState } from './session';
 
 export function Themes() {
   const [themes, setThemes] = React.useState<Theme[]>();
@@ -15,7 +15,7 @@ export function Themes() {
   const load = React.useCallback(async () => {
     setError(undefined); const timer = setTimeout(() => setLoading(true), 1000);
     try { setThemes((await client.operation<{ themes: Theme[] }>('/v1/themes')()).themes); }
-    catch (err) { if (err instanceof ApiError && err.problem.code === 'origin_not_allowed') setPermission(true); else if (err instanceof ApiError && err.problem.code === 'unauthenticated') navigate('/', true); else setError(err instanceof ApiError ? err.problem.traceId || '' : ''); }
+    catch (err) { if (err instanceof ApiError && err.problem.code === 'origin_not_allowed') setPermission(true); else if (err instanceof ApiError && ['unauthenticated', 'reauthentication_failed'].includes(err.problem.code)) { sessionState.reauthenticationFailed = true; navigate('/', true); } else setError(err instanceof ApiError ? err.problem.traceId || '' : ''); }
     finally { clearTimeout(timer); setLoading(false); }
   }, []);
   React.useEffect(() => { void load(); }, [load]);
@@ -46,7 +46,7 @@ export function RoomDetails() {
       const result = await operation.current(); entryContext.room = result.roomCode; navigate('/room/questions', true);
     } catch (err) {
       if (err instanceof ApiError && err.problem.code === 'origin_not_allowed') setPermission(true);
-      else if (err instanceof ApiError && err.problem.code === 'unauthenticated') navigate('/', true);
+      else if (err instanceof ApiError && ['unauthenticated', 'reauthentication_failed'].includes(err.problem.code)) { sessionState.reauthenticationFailed = true; navigate('/', true); }
       else if (err instanceof ApiError && err.problem.code === 'theme_unavailable') setUnavailable(true);
       else if (err instanceof ApiError && err.problem.code === 'validation_failed') {
         const fields: FieldErrors = {}; for (const item of err.problem.errors || []) if (item.field in messages) fields[item.field as keyof FieldErrors] = messages[item.field as keyof FieldErrors]; setErrors(fields);
@@ -57,7 +57,7 @@ export function RoomDetails() {
   if (permission) return <main className="entry"><section className="entry-content"><h1>지금은 쓸 수 없어요</h1></section></main>;
   return <main className="create"><p>{roomDraft.theme.name}</p><h1>모임 정보를 적어 주세요</h1>
     <fieldset disabled={loading}><label htmlFor="gathering">모임 이름</label><input id="gathering" value={name} maxLength={40} onChange={e => setName(e.target.value)} onBlur={() => setErrors(e => ({ ...e, gatheringName: nameValid.valid ? undefined : messages.gatheringName }))} aria-invalid={Boolean(errors.gatheringName)} /><p>예: 제주 3박 · {[...name.trim()].length}/20</p>{errors.gatheringName && <p role="alert">{errors.gatheringName}</p>}
-    <label>인원</label><div className="counter"><button aria-label="인원 줄이기" onClick={() => setSize(s => Math.max(2, s - 1))} disabled={size === 2}>-</button><span>{size}명</span><button aria-label="인원 늘리기" onClick={() => setSize(s => Math.min(8, s + 1))} disabled={size === 8}>+</button></div><p>나를 포함해 2~8명이에요. 이만큼 답하면 마감돼요</p>
+    <label>인원</label><div className="counter"><button aria-label="인원 줄이기" onClick={() => setSize(s => Math.max(2, s - 1))} disabled={size === 2}>-</button><span>{size}명</span><button aria-label="인원 늘리기" onClick={() => setSize(s => Math.min(8, s + 1))} disabled={size === 8}>+</button></div><p>나를 포함해 2~8명이에요. 이만큼 답하면 마감돼요</p>{errors.partySize && <p role="alert">{errors.partySize}</p>}
     <label htmlFor="nickname">내 닉네임</label><input id="nickname" value={nickname} maxLength={30} onChange={e => setNickname(e.target.value)} onBlur={() => setErrors(e => ({ ...e, hostNickname: nickValid.valid ? undefined : messages.hostNickname }))} aria-invalid={Boolean(errors.hostNickname)} /><p>닉네임은 이 방에서 나만 봐요 · {[...nickname.trim()].length}/10</p>{errors.hostNickname && <p role="alert">{errors.hostNickname}</p>}</fieldset>
     {unavailable && <div role="alert"><p>이 테마는 지금 쓸 수 없어요</p><button className="link-button" onClick={() => navigate('/rooms/new', true)}>테마 다시 고르기</button></div>}
     {error !== undefined && <div role="alert"><p>잠시 뒤 다시 해 주세요</p>{error && <p>오류 번호 {error}</p>}</div>}
