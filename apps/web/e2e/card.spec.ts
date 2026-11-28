@@ -6,7 +6,7 @@ test('합의 카드와 방장 마감 확인을 보여 준다', async ({ page }) 
   await page.setViewportSize({ width: 360, height: 800 });
   await page.route('**/v1/rooms/**', route => {
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
-    if (route.request().method() === 'POST') return route.fulfill({ headers: cors, json: { roomStatus: 'closed', closeReason: 'host_closed', card } });
+    if (route.request().method() === 'POST') return route.fulfill({ headers: cors, json: { roomStatus: 'closed', closeReason: 'host_closed', card: { ...card, stage: 'final' } } });
     return route.fulfill({ headers: cors, json: route.request().url().endsWith('/card') ? card : room });
   });
   await page.goto('/room/card?room=ABCDEFGH23');
