@@ -23,13 +23,13 @@ describe('TASK-019 API-005 join room',()=>{
   expect(await count('participants')).toBe(1);
  });
  it('returns 400, 401, 403, 404, 409 and 429 with contract codes',async()=>{
-  let r=await worker.fetch(req(tokenA,'ABCDEFGH23',{nickname:''}),bindings);expect(r.status).toBe(400);expect(await r.json()).toMatchObject({code:'validation_failed'});
+  let r=await worker.fetch(req(tokenA,'ABCDEFGH23',{nickname:''}),bindings);expect(r.status).toBe(400);expect(await r.json()).toMatchObject({code:'validation_failed'});expect(await count('rate_counters')).toBe(0);
   expect((await worker.fetch(req('', 'ABCDEFGH23'),bindings)).status).toBe(401);
   expect((await worker.fetch(req(tokenA,'ABCDEFGH23',{nickname:'하늘'},key,'https://bad.test'),bindings)).status).toBe(403);
   r=await worker.fetch(req(tokenB,'bad'),bindings);expect(r.status).toBe(404);expect(await r.json()).toMatchObject({code:'room_not_found'});
   r=await worker.fetch(req(tokenA,'DIFFEREN23',{nickname:''}),bindings);expect(r.status).toBe(409);expect(await r.json()).toMatchObject({code:'idempotency_conflict'});
   await env.DB.prepare("INSERT INTO rate_counters VALUES ('write',?,?,60) ON CONFLICT(scope,subject,window_start) DO UPDATE SET count=60").bind(userB,Math.floor(now/60)*60).run();
-  r=await worker.fetch(req(tokenB,'ABCDEFGH23',{nickname:'하늘'},'22345678-1234-1234-1234-123456789abc'),bindings);expect(r.status).toBe(429);expect(Number(r.headers.get('Retry-After'))).toBeGreaterThan(0);
+  r=await worker.fetch(req(tokenB,'ABCDEFGH23',{nickname:'하늘'},'22345678-1234-1234-1234-123456789abc'),bindings);expect(r.status).toBe(429);expect(Number(r.headers.get('Retry-After'))).toBeGreaterThan(0);expect(await count('participants')).toBe(0);expect((await env.DB.prepare('SELECT count(*) AS n FROM idempotency_records WHERE user_id=? AND request_id=?').bind(userB,'22345678-1234-1234-1234-123456789abc').first<{n:number}>())?.n).toBe(0);
  });
  it('allows only one concurrent join when seven seats are occupied',async()=>{
   for(let i=0;i<7;i++) {const id=String(i).repeat(26);await env.DB.prepare('INSERT INTO users VALUES (?,?,?)').bind(id,String(i).repeat(64),now).run();await env.DB.prepare("INSERT INTO participants(room_id,user_id,role,nickname,joined_at) VALUES(1,?,'member','기존',?)").bind(id,now).run();}
@@ -46,6 +46,16 @@ describe('TASK-019 API-005 join room',()=>{
   const loser=responses.find(r=>r.status===409)!;expect(await loser.json()).toMatchObject({code:'room_full'});
   expect(await count('participants')).toBe(8);expect((await env.DB.prepare('SELECT participant_count AS n FROM rooms').first<{n:number}>())?.n).toBe(8);
  });
+ it('serializes concurrent successful writes at the last rate-limit slot',async()=>{
+  await env.DB.prepare("INSERT INTO rooms (code,gathering_name,party_size,question_set_id,participant_count,created_at,expires_at) VALUES ('BBBBBBBB23','여행',8,1,0,?,?)").bind(now,now+2592000).run();
+  await env.DB.prepare("INSERT INTO rate_counters VALUES ('write',?,?,59)").bind(userA,Math.floor(now/60)*60).run();
+  let ready!:()=>void,release!:()=>void,waiting=0;
+  const both=new Promise<void>(resolve=>{ready=resolve}),gate=new Promise<void>(resolve=>{release=resolve});
+  const delayed=new Proxy(env.DB,{get(target,prop){if(prop==='batch')return async (...args:Parameters<D1Database['batch']>)=>{if(++waiting<=2){if(waiting===2)ready();await gate}return target.batch(...args)};const v=Reflect.get(target,prop,target);return typeof v==='function'?v.bind(target):v}});
+  const pending=Promise.all([worker.fetch(req(tokenA),{...bindings,DB:delayed}),worker.fetch(req(tokenA,'BBBBBBBB23',{nickname:'하늘'},'22345678-1234-1234-1234-123456789abc'),{...bindings,DB:delayed})]);
+  await both;release();const responses=await pending;expect(responses.map(r=>r.status).sort()).toEqual([201,429]);
+  expect(await count('participants')).toBe(1);expect((await env.DB.prepare("SELECT count FROM rate_counters WHERE scope='write' AND subject=?").bind(userA).first<{count:number}>())?.count).toBe(60);
+ });
  it('rejects a close committed after the join snapshot but before its batch',async()=>{
   let signal!: () => void, release!: () => void;
   const started=new Promise<void>(resolve=>{signal=resolve}), gate=new Promise<void>(resolve=>{release=resolve});
@@ -60,6 +70,6 @@ describe('TASK-019 API-005 join room',()=>{
   expect(r.status).toBe(409);expect(await r.json()).toMatchObject({code:'room_closed'});expect(await count('participants')).toBe(0);
  });
  it('rolls back a failed write and returns default 500',async()=>{
-  await env.DB.prepare('DROP TABLE participants').run();const r=await worker.fetch(req(),bindings);expect(r.status).toBe(500);expect(await r.json()).toMatchObject({code:'internal'});
+  await env.DB.prepare('DROP TABLE participants').run();const r=await worker.fetch(req(),bindings);expect(r.status).toBe(500);expect(await r.json()).toMatchObject({code:'internal'});expect(await count('rate_counters')).toBe(0);expect(await count('idempotency_records')).toBe(0);
  });
 });

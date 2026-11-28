@@ -49,3 +49,14 @@ export async function withTossLimit<T>(db: D1Database, userId: string, now: numb
   const denied = await checkLimit(db, 'toss', userId, now, log);
   return denied ? {ok: false, response: denied} : {ok: true, value: await invoke()};
 }
+
+/** Reserve a successful write in the same batch as its idempotency record and domain changes. */
+export function writeLimitReservation(db:D1Database,user:string,now:number): D1PreparedStatement {
+  const minute=Math.floor(now/60)*60;
+  return db.prepare("INSERT INTO rate_counters(scope,subject,window_start,count) VALUES('write',?,?,1) ON CONFLICT(scope,subject,window_start) DO UPDATE SET count=CASE WHEN rate_counters.count<60 THEN rate_counters.count+1 ELSE NULL END").bind(user,minute);
+}
+export async function writeLimitDenied(db:D1Database,user:string,now:number): Promise<Response|null> {
+  const minute=Math.floor(now/60)*60;
+  const row=await db.prepare("SELECT count FROM rate_counters WHERE scope='write' AND subject=? AND window_start=?").bind(user,minute).first<{count:number}>();
+  return (row?.count ?? 0)>=60 ? problemResponse('rate_limited',undefined,{'Retry-After':String(minute+60-now)}) : null;
+}

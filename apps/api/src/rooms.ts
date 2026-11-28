@@ -2,7 +2,7 @@ import { problemResponse } from './app';
 import { idempotent } from './idempotency';
 import { validateGatheringName, validateNickname } from './names';
 import { findSessionUser } from './session';
-import { ROOM_CREATE_MAX, ROOM_CREATE_SECONDS, checkLimit } from './rate-limit';
+import { ROOM_CREATE_MAX, ROOM_CREATE_SECONDS, writeLimitReservation, writeLimitDenied } from './rate-limit';
 
 const CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function newRoomCode(): string {
@@ -93,13 +93,7 @@ export async function joinRoom(request: Request, db: D1Database, now = Math.floo
   const text = await request.text(), key = request.headers.get('Idempotency-Key');
   const operation = 'POST joinRoom';
   const requestFingerprint = JSON.stringify([request.method, new URL(request.url).pathname, text]);
-  let counted = false;
   const execute = () => idempotent(db,user,key,operation,requestFingerprint,now,async () => {
-    if (!counted) {
-      const denied = await checkLimit(db,'write',user,now);
-      if (denied) return {status:429,body:await denied.json(),headers:{'Retry-After':denied.headers.get('Retry-After')!},statements:[]};
-      counted = true;
-    }
     let value: unknown;
     try {value=JSON.parse(text)} catch {return problem('invalid_request')}
     if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k=>k!=='nickname')) return problem('invalid_request');
@@ -115,12 +109,16 @@ export async function joinRoom(request: Request, db: D1Database, now = Math.floo
     if (row.role) return {status:200,body:{roomCode:code,myRole:row.role,mySubmitted:row.submitted===1},statements:[]};
     if (row.status !== 'open') return problem('room_closed');
     if (row.participantCount >= 8) return problem('room_full');
+    const denied = await writeLimitDenied(db,user,now);
+    if (denied) return {status:429,body:await denied.json(),headers:{'Retry-After':denied.headers.get('Retry-After')!},statements:[]};
     return {status:201,body:{roomCode:code,myRole:'member',mySubmitted:false},statements:[
       db.prepare("UPDATE rooms SET participant_count=CASE WHEN status='open' AND participant_count<8 AND expires_at>? THEN participant_count+1 ELSE NULL END WHERE id=?").bind(now,row.id),
       db.prepare("INSERT INTO participants (room_id,user_id,role,nickname,joined_at) VALUES (?,?,'member',?,?)").bind(row.id,user,nickname.value,now),
+      writeLimitReservation(db,user,now),
     ]};
   });
   try { return await execute(); } catch (error) {
+    const denied=await writeLimitDenied(db,user,now);if(denied)return denied;
     // A concurrent join or close can invalidate the snapshot used by the first plan.
     const current = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10}$/.test(code) ? await db.prepare("SELECT r.status,r.participant_count AS n,EXISTS(SELECT 1 FROM participants p WHERE p.room_id=r.id AND p.user_id=?) AS member FROM rooms r WHERE r.code=? AND r.expires_at>?").bind(user,code,now).first<{status:string;n:number;member:number}>() : null;
     if (!current || current.status !== 'open' || current.n >= 8 || current.member) return execute();
