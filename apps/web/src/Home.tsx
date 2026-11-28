@@ -3,7 +3,7 @@ import { Button } from '@toss/tds-mobile';
 import { ApiError, formatAsOf, onVisible } from './api';
 import { entryContext } from './entry-context';
 import { navigate } from './routes';
-import { client } from './session';
+import { client, sessionState } from './session';
 
 type Room = { roomCode: string; gatheringName: string; theme: { name: string }; partySize: number; submittedCount: number; myRole: 'host' | 'member'; mySubmitted: boolean };
 type RoomList = { rooms: Room[]; asOf: string };
@@ -23,7 +23,7 @@ export function Home() {
       setData(result);
     } catch (err) {
       if (err instanceof ApiError && err.problem.code === 'origin_not_allowed') setPermission(true);
-      else if (err instanceof ApiError && err.problem.code === 'unauthenticated') navigate('/', true);
+      else if (err instanceof ApiError && ['unauthenticated', 'reauthentication_failed'].includes(err.problem.code)) { sessionState.reauthenticationFailed = true; navigate('/', true); }
       else setError(err instanceof ApiError ? err.problem.traceId || '' : '');
     } finally { clearTimeout(timer); setLoading(false); pending.current = false; }
   }, []);
