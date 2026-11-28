@@ -116,8 +116,8 @@ export async function joinRoom(request: Request, db: D1Database, now = Math.floo
     if (row.status !== 'open') return problem('room_closed');
     if (row.participantCount >= 8) return problem('room_full');
     return {status:201,body:{roomCode:code,myRole:'member',mySubmitted:false},statements:[
-      db.prepare("UPDATE rooms SET participant_count=participant_count+1 WHERE id=? AND status='open' AND participant_count<8 AND expires_at>?").bind(row.id,now),
-      db.prepare("INSERT INTO participants (room_id,user_id,role,nickname,joined_at) VALUES (CASE WHEN changes()=1 THEN ? ELSE NULL END,?,'member',?,?)").bind(row.id,user,nickname.value,now),
+      db.prepare("UPDATE rooms SET participant_count=CASE WHEN status='open' AND participant_count<8 AND expires_at>? THEN participant_count+1 ELSE NULL END WHERE id=?").bind(now,row.id),
+      db.prepare("INSERT INTO participants (room_id,user_id,role,nickname,joined_at) VALUES (?,?,'member',?,?)").bind(row.id,user,nickname.value,now),
     ]};
   });
   try { return await execute(); } catch (error) {

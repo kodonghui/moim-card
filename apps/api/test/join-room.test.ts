@@ -34,7 +34,14 @@ describe('TASK-019 API-005 join room',()=>{
  it('allows only one concurrent join when seven seats are occupied',async()=>{
   for(let i=0;i<7;i++) {const id=String(i).repeat(26);await env.DB.prepare('INSERT INTO users VALUES (?,?,?)').bind(id,String(i).repeat(64),now).run();await env.DB.prepare("INSERT INTO participants(room_id,user_id,role,nickname,joined_at) VALUES(1,?,'member','기존',?)").bind(id,now).run();}
   await env.DB.prepare('UPDATE rooms SET participant_count=7').run();
-  const responses=await Promise.all([worker.fetch(req(tokenA),bindings),worker.fetch(req(tokenB),bindings)]);
+  let ready!: () => void, release!: () => void, waiting=0;
+  const bothReady=new Promise<void>(resolve=>{ready=resolve}), gate=new Promise<void>(resolve=>{release=resolve});
+  const delayed=new Proxy(env.DB,{get(target,prop) {
+    if(prop==='batch') return async (...args: Parameters<D1Database['batch']>) => {if(++waiting<=2){if(waiting===2)ready();await gate} return target.batch(...args)};
+    const value=Reflect.get(target,prop,target);return typeof value==='function'?value.bind(target):value;
+  }});
+  const pending=Promise.all([worker.fetch(req(tokenA),{...bindings,DB:delayed}),worker.fetch(req(tokenB),{...bindings,DB:delayed})]);
+  await bothReady; release(); const responses=await pending;
   expect(responses.map(r=>r.status).sort()).toEqual([201,409]);
   const loser=responses.find(r=>r.status===409)!;expect(await loser.json()).toMatchObject({code:'room_full'});
   expect(await count('participants')).toBe(8);expect((await env.DB.prepare('SELECT participant_count AS n FROM rooms').first<{n:number}>())?.n).toBe(8);
