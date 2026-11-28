@@ -5,7 +5,7 @@ import { ApiError } from './api';
 import { ANSWER_KEY_PREFIX, readAnswers, writeAnswers, removeAnswers } from './answer-storage';
 import { entryContext } from './entry-context';
 import { navigate } from './routes';
-import { roomContext } from './room-context';
+import { roomContext, type Profile } from './room-context';
 import { client, sessionState } from './session';
 
 type Choice = 'A' | 'B' | 'none';
@@ -19,7 +19,7 @@ export function Questions() {
   const [questions, setQuestions] = React.useState<Question[]>(); const [answers, setAnswers] = React.useState<Answers>({});
   const [key, setKey] = React.useState(''); const [loading, setLoading] = React.useState(false); const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string>(); const [missing, setMissing] = React.useState(false); const [permission, setPermission] = React.useState(false); const [seconds, setSeconds] = React.useState(0);
-  const operation = React.useRef<(() => Promise<{ logConversion: boolean; roomStatus: string }>)>();
+  const operation = React.useRef<(() => Promise<{ logConversion: boolean; roomStatus: string; profile: Profile }>)>();
   const [invalidPosition, setInvalidPosition] = React.useState<number>();
   const storageRef = React.useRef('');
   const path = `/v1/rooms/${encodeURIComponent(entryContext.room || '')}`;
@@ -64,6 +64,7 @@ export function Questions() {
       operation.current ??= client.operation(`${path}/responses`, { method: 'POST', idempotent: true, body: { answers: questions.map(q => ({ position: q.position, choice: answers[q.position] })) } });
       const result = await operation.current();
       if (key) removeAnswers(key);
+      roomContext.profile = result.profile; roomContext.profileRoom = entryContext.room || undefined;
       if (result.logConversion) logInterimCard();
       if (result.roomStatus === 'closed') roomContext.closedNotice = true;
       navigate('/room/result', true);

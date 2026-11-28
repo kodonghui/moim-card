@@ -4,7 +4,7 @@ export class ApiError extends Error {
   constructor(readonly problem: Problem, readonly retryAfter: number = 0) { super(problem.code); }
 }
 type Options = { baseUrl: string; reauthenticate: () => Promise<string>; fetcher?: typeof fetch; onLoading?: (loading: boolean) => void };
-type RequestOptions = { method?: 'GET' | 'POST' | 'DELETE'; body?: unknown; idempotent?: boolean; authenticated?: boolean; retryAuthentication?: boolean };
+type RequestOptions = { method?: 'GET' | 'POST' | 'DELETE'; body?: unknown; idempotent?: boolean; authenticated?: boolean; retryAuthentication?: boolean; onStatus?: (status: number) => void };
 export class ApiClient {
   private token: string | undefined;
   private readonly fetcher: typeof fetch;
@@ -66,6 +66,7 @@ export class ApiClient {
         if (['invalid_request', 'route_not_found', 'method_not_allowed'].includes(problem.code)) console.error('client request error');
         throw new ApiError(problem, Number(response.headers.get('Retry-After')) || 0);
       }
+      request.onStatus?.(response.status);
       return data as T;
     } catch (error) {
       if (error instanceof ApiError) throw error;
