@@ -7,7 +7,7 @@ class ClientLogCheck(unittest.TestCase):
     def test_prohibits_logs_and_analytics_parameters(self):
         with tempfile.TemporaryDirectory() as directory:
             sample = Path(directory) / 'sample.ts'
-            for code, succeeds in [('Analytics.log("interim_card_created")', True), ('console.log(roomCode)', False), ('Analytics.log("interim_card_created", {roomCode})', False), ('reportError(roomCode)', False)]:
+            for code, succeeds in [('Analytics.log("interim_card_created")', True), ('console.error("client request error")', True), ('console.error("client request error", roomCode)', False), ('console.log(roomCode)', False), ('Analytics.log("interim_card_created", {roomCode})', False), ('reportError(roomCode)', False)]:
                 with self.subTest(code=code):
                     sample.write_text(code)
                     result = subprocess.run(['node', 'scripts/check-client-logs.cjs', directory], capture_output=True)

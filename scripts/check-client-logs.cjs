@@ -18,7 +18,8 @@ function check(file) {
     if (ts.isCallExpression(node)) {
       const callee = node.expression.getText(source);
       const allowed = callee === 'Analytics.log' && node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]) && node.arguments[0].text === 'interim_card_created';
-      if (/^(console(?:\.|\[)|Analytics\.log$|reportError$|captureException$)/.test(callee) && !allowed) {
+      const allowedStaticError = callee === 'console.error' && node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]) && node.arguments[0].text === 'client request error';
+      if (/^(console(?:\.|\[)|Analytics\.log$|reportError$|captureException$)/.test(callee) && !allowed && !allowedStaticError) {
         process.stderr.write(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}: prohibited logging call\n`);
         errors++;
       }

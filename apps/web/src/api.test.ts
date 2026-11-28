@@ -48,6 +48,13 @@ describe('공통 API 처리', () => {
     await result;
     expect(onLoading).toHaveBeenLastCalledWith(false);
   });
+  it('형식 오류는 방 코드 없이 고정 문구만 오류 보고한다', async () => {
+    const report = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const fetcher = vi.fn().mockResolvedValue(json({ status: 400, code: 'invalid_request', traceId: 'safe' }, 400));
+    const client = new ApiClient({ baseUrl: 'http://localhost', fetcher, reauthenticate: vi.fn() });
+    await expect(client.operation('/v1/rooms/secret')()).rejects.toBeInstanceOf(ApiError);
+    expect(report).toHaveBeenCalledExactlyOnceWith('client request error');
+  });
   it('429 대기 시간을 읽고 남은 초를 계산한다', async () => {
     const client = new ApiClient({ baseUrl: 'http://localhost', fetcher: vi.fn().mockResolvedValue(json({ status: 429, code: 'rate_limited' }, 429, { 'Retry-After': '30' })), reauthenticate: vi.fn() });
     await expect(client.operation('/v1/rooms')()).rejects.toMatchObject({ retryAfter: 30 });

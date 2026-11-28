@@ -61,7 +61,11 @@ export class ApiClient {
         this.fetcher(new URL(path, this.options.baseUrl), { method: request.method ?? 'GET', headers, body: request.body === undefined ? undefined : JSON.stringify(request.body), signal: abort.signal }).then(async response => ({ response, data: response.status === 204 ? undefined : await response.json() })),
         new Promise<never>((_, reject) => { timeout = setTimeout(() => { abort.abort(); reject(new ApiError({ status: 0, code: 'timeout' })); }, 10000); }),
       ]);
-      if (!response.ok) throw new ApiError(data as Problem, Number(response.headers.get('Retry-After')) || 0);
+      if (!response.ok) {
+        const problem = data as Problem;
+        if (['invalid_request', 'route_not_found', 'method_not_allowed'].includes(problem.code)) console.error('client request error');
+        throw new ApiError(problem, Number(response.headers.get('Retry-After')) || 0);
+      }
       return data as T;
     } catch (error) {
       if (error instanceof ApiError) throw error;
