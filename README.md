@@ -17,6 +17,8 @@ pnpm test
 pnpm build
 python3 -m unittest discover -s scripts -p test_check_build.py
 python3 scripts/check-build.py
+python3 -m unittest discover -s scripts -p test_check_question_sets.py
+python3 scripts/check-question-sets.py
 python3 scripts/check-contract.py
 python3 scripts/check-screens.py
 python3 scripts/check-wbs.py
