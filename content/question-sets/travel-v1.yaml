@@ -2,13 +2,13 @@ theme: travel
 version: 1
 default_next_action: 서로의 선택을 보고 함께 정해요
 profile_phrases:
-  plan_speed_low: 여행 준비를 천천히 정하는 편이에요
+  plan_speed_low: 여행 계획을 그때그때 정하는 편이에요
   plan_speed_high: 여행 계획을 미리 정하는 편이에요
   spending_priority_low: 여행에서 비용을 아끼는 편이에요
   spending_priority_high: 여행에서 편의와 시간을 중시하는 편이에요
   schedule_change_low: 여행 중 정한 계획을 지키는 편이에요
   schedule_change_high: 여행 중 상황에 맞춰 바꾸는 편이에요
-  balanced: 여행에서 여러 방식을 고르게 살펴요
+  balanced: 여행에서 어느 쪽이든 편하게 맞추는 편이에요
 questions:
 - prompt: 여행 일정은 언제 정할까요?
   option_a: 미리 자세히 정해요
@@ -19,13 +19,13 @@ questions:
   axis: plan_speed
   high_choice: A
 - prompt: 숙소를 고를 때 무엇을 우선할까요?
-  option_a: 편의 시설을 중시해요
-  option_b: 비용을 아껴요
+  option_a: 비용을 아껴요
+  option_b: 편의 시설을 중시해요
   split_suggestion: 예산 범위를 정하고 편의 시설을 함께 비교해요
-  agreed_text_a: 편의 시설을 우선해요
-  agreed_text_b: 숙소 비용을 아껴요
+  agreed_text_a: 숙소 비용을 아껴요
+  agreed_text_b: 편의 시설을 우선해요
   axis: spending_priority
-  high_choice: A
+  high_choice: B
 - prompt: 비가 오면 계획을 어떻게 바꿀까요?
   option_a: 새 장소를 바로 찾아요
   option_b: 원래 계획을 최대한 지켜요
@@ -41,21 +41,21 @@ questions:
   agreed_text_a: 여러 곳을 둘러봐요
   agreed_text_b: 한두 곳에서 오래 머물러요
 - prompt: 식사는 어떻게 고를까요?
-  option_a: 가기 전에 찾아봐요
-  option_b: 현장에서 둘러보고 골라요
+  option_a: 현장에서 둘러보고 골라요
+  option_b: 가기 전에 찾아봐요
   split_suggestion: 후보를 몇 곳 정하고 그때 함께 골라요
-  agreed_text_a: 식사할 곳을 미리 찾아봐요
-  agreed_text_b: 현장에서 식사할 곳을 골라요
+  agreed_text_a: 현장에서 식사할 곳을 골라요
+  agreed_text_b: 식사할 곳을 미리 찾아봐요
   axis: plan_speed
-  high_choice: A
+  high_choice: B
 - prompt: 이동 수단은 무엇을 중시할까요?
-  option_a: 이동 시간을 줄여요
-  option_b: 교통비를 아껴요
+  option_a: 교통비를 아껴요
+  option_b: 이동 시간을 줄여요
   split_suggestion: 시간과 비용을 함께 비교해 골라요
-  agreed_text_a: 이동 시간을 줄이는 쪽을 골라요
-  agreed_text_b: 교통비를 아끼는 쪽을 골라요
+  agreed_text_a: 교통비를 아끼는 쪽을 골라요
+  agreed_text_b: 이동 시간을 줄이는 쪽을 골라요
   axis: spending_priority
-  high_choice: A
+  high_choice: B
 - prompt: 쉬는 시간은 어떻게 둘까요?
   option_a: 상황에 따라 바꿔요
   option_b: 정한 시간에 쉬어요

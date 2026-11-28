@@ -2,13 +2,13 @@ theme: dinner
 version: 1
 default_next_action: 서로의 선택을 보고 함께 정해요
 profile_phrases:
-  plan_speed_low: 식사 계획을 천천히 정하는 편이에요
+  plan_speed_low: 식사 장소와 시간을 가까워지면 정하는 편이에요
   plan_speed_high: 식사 계획을 미리 정하는 편이에요
-  spending_priority_low: 식사에서 비용을 아끼는 편이에요
-  spending_priority_high: 식사에서 편의와 분위기를 중시하는 편이에요
-  schedule_change_low: 식사에서 정한 계획을 지키는 편이에요
-  schedule_change_high: 식사에서 상황에 맞춰 바꾸는 편이에요
-  balanced: 식사에서 여러 방식을 고르게 살펴요
+  spending_priority_low: 식사 자리에서 비용을 아끼는 편이에요
+  spending_priority_high: 식사 자리에서 분위기와 편의를 중시하는 편이에요
+  schedule_change_low: 식사 자리에서 정한 계획을 지키는 편이에요
+  schedule_change_high: 식사 자리에서 상황에 맞춰 바꾸는 편이에요
+  balanced: 식사 자리에서 어느 쪽이든 편하게 맞추는 편이에요
 questions:
 - prompt: 식사 장소는 언제 고를까요?
   option_a: 미리 정해요
@@ -19,13 +19,13 @@ questions:
   axis: plan_speed
   high_choice: A
 - prompt: 식당을 고를 때 무엇을 우선할까요?
-  option_a: 분위기와 편의를 중시해요
-  option_b: 비용을 아껴요
+  option_a: 비용을 아껴요
+  option_b: 분위기와 편의를 중시해요
   split_suggestion: 예산을 정하고 편한 장소를 함께 찾아요
-  agreed_text_a: 분위기와 편의를 우선해요
-  agreed_text_b: 식사 비용을 아껴요
+  agreed_text_a: 식사 비용을 아껴요
+  agreed_text_b: 분위기와 편의를 우선해요
   axis: spending_priority
-  high_choice: A
+  high_choice: B
 - prompt: 고른 식당이 붐비면 어떻게 할까요?
   option_a: 다른 곳을 바로 찾아요
   option_b: 조금 기다려요
@@ -41,32 +41,32 @@ questions:
   agreed_text_a: 함께 나눌 메뉴를 골라요
   agreed_text_b: 각자 먹을 메뉴를 골라요
 - prompt: 모이는 시간은 어떻게 정할까요?
-  option_a: 여유 있게 미리 정해요
-  option_b: 가까워지면 정해요
+  option_a: 가까워지면 정해요
+  option_b: 여유 있게 미리 정해요
   split_suggestion: 가능한 시간대를 먼저 모아 두어요
-  agreed_text_a: 모이는 시간을 미리 정해요
-  agreed_text_b: 가까워지면 시간을 정해요
+  agreed_text_a: 가까워지면 시간을 정해요
+  agreed_text_b: 모이는 시간을 미리 정해요
   axis: plan_speed
-  high_choice: A
-- prompt: 식사 뒤에는 어떻게 할까요?
-  option_a: 편한 곳에서 더 이야기해요
-  option_b: 추가 비용 없이 마무리해요
-  split_suggestion: 원하는 사람끼리 부담 없는 곳을 골라요
-  agreed_text_a: 편한 곳에서 더 이야기해요
-  agreed_text_b: 추가 비용 없이 마무리해요
+  high_choice: B
+- prompt: 식사 뒤 카페는 어떻게 고를까요?
+  option_a: 부담 없는 곳을 골라요
+  option_b: 분위기 좋은 곳을 골라요
+  split_suggestion: 가까운 곳 중에서 분위기도 함께 봐요
+  agreed_text_a: 부담 없는 카페를 골라요
+  agreed_text_b: 분위기 좋은 카페를 골라요
   axis: spending_priority
-  high_choice: A
-- prompt: 참석 시간이 달라지면 어떻게 할까요?
-  option_a: 시작 시간을 조정해요
+  high_choice: B
+- prompt: 늦는 사람이 생기면 어떻게 할까요?
+  option_a: 시작 시간을 미뤄요
   option_b: 정한 시간에 시작해요
   split_suggestion: 도착 시간을 확인하고 시작 방식을 정해요
-  agreed_text_a: 상황에 맞춰 시작 시간을 조정해요
+  agreed_text_a: 시작 시간을 미뤄요
   agreed_text_b: 정한 시간에 시작해요
   axis: schedule_change
   high_choice: A
-- prompt: 대화는 어떻게 나눌까요?
-  option_a: 주제를 하나 정해요
-  option_b: 자유롭게 이야기해요
-  split_suggestion: 가벼운 주제로 시작하고 자유롭게 이어가요
-  agreed_text_a: 대화 주제를 하나 정해요
-  agreed_text_b: 자유롭게 이야기해요
+- prompt: 식사 시간은 얼마나 잡을까요?
+  option_a: 여유 있게 잡아요
+  option_b: 짧고 가볍게 해요
+  split_suggestion: 끝나는 시간만 미리 정해 두어요
+  agreed_text_a: 식사 시간을 여유 있게 잡아요
+  agreed_text_b: 식사를 짧고 가볍게 해요
