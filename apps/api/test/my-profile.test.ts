@@ -18,9 +18,11 @@ beforeEach(async()=>{
 describe('TASK-023 API-008 my profile',()=>{
  it('computes the profile from answers and does not persist a result',async()=>{
   await env.DB.prepare("INSERT INTO responses VALUES(1,1,'AANNNNNN',?)").bind(now).run();
-  const before=await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all();
+  const tables=['users','sessions','themes','question_sets','questions','profile_phrases','rooms','participants','responses','consensus_cards','past_cards','notification_subscriptions','notification_sends','idempotency_records','rate_counters','entry_stats'];
+  const counts=()=>Promise.all(tables.map(async table=>(await env.DB.prepare(`SELECT count(*) AS n FROM ${table}`).first<{n:number}>())?.n));
+  const before=await counts();
   const r=await worker.fetch(req(),bindings);expect(r.status).toBe(200);expect(await r.json()).toEqual({summary:'미리 정해요',axes:[{axis:'plan_speed',band:'high'}]});
-  expect(await env.DB.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all()).toMatchObject({results:before.results});
+  expect(await counts()).toEqual(before);
   expect((await env.DB.prepare('SELECT count(*) AS n FROM profile_phrases').first<{n:number}>())?.n).toBe(7);
  });
  it('returns 401, 403 and 404',async()=>{
