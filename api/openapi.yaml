@@ -255,7 +255,7 @@ paths:
           '404': 경로가 자원을 가리키지 않아요. 없는 테마는 409 theme_unavailable이에요
         cases:
           repeats: 같은 Idempotency-Key면 방은 하나이고 첫 응답(같은 방 코드)을 다시 돌려줌
-          limits: 방 만들기 24시간 30개, 쓰기 분당 60건
+          limits: 방 만들기 24시간 30개(그 밖의 쓰기 분당 60건에는 포함하지 않음)
           exposure: 방 코드·모임 이름·인원·테마만
       security:
       - bearerAuth: []
@@ -379,8 +379,6 @@ paths:
                     status: 429
                     code: rate_limited
                     traceId: 7e360da120b6e534
-                write-limit:
-                  $ref: '#/components/examples/write-limit'
           headers:
             Retry-After:
               description: 다시 보내도 되는 때까지 남은 초

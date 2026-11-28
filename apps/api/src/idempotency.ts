@@ -2,9 +2,9 @@ import { hashToken } from './session';
 import { problemResponse } from './app';
 
 const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-type Plan = { status: number; body: unknown; statements: D1PreparedStatement[] };
+type Plan = { status: number; body: unknown; statements: D1PreparedStatement[]; headers?: Record<string, string> };
 type RecordRow = { operation: string; request_sha256: string; status_code: number; response_body: string };
-const response = (status: number, body: unknown) => status === 204 ? new Response(null, {status}) : Response.json(body, {status, headers: status >= 400 ? {'content-type': 'application/problem+json'} : undefined});
+const response = (status: number, body: unknown, headers: Record<string, string> = {}) => status === 204 ? new Response(null, {status, headers}) : Response.json(body, {status, headers: {...(status >= 400 ? {'content-type': 'application/problem+json'} : {}), ...headers}});
 
 /** The operation's prepared writes and record are committed together in one D1 batch. */
 export async function idempotent(db: D1Database, userId: string, key: string | null, operation: string, requestBody: string, now: number, plan: () => Promise<Plan>): Promise<Response> {
@@ -18,7 +18,7 @@ export async function idempotent(db: D1Database, userId: string, key: string | n
   const cacheable = (result.status >= 200 && result.status < 300) || [400, 403, 404, 409].includes(result.status);
   if (!cacheable) {
     if (result.statements.length) throw new Error('Non-cacheable results cannot mutate data');
-    return response(result.status, result.body);
+    return response(result.status, result.body, result.headers);
   }
   const body = JSON.stringify(result.body ?? null);
   const expire = db.prepare('DELETE FROM idempotency_records WHERE user_id = ? AND request_id = ? AND created_at <= ?').bind(userId, key, now - 86400);
@@ -29,5 +29,5 @@ export async function idempotent(db: D1Database, userId: string, key: string | n
     if (winner) return replay(winner);
     throw error;
   }
-  return response(result.status, result.body);
+  return response(result.status, result.body, result.headers);
 }
