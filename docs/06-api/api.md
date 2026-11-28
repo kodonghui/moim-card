@@ -37,7 +37,7 @@
 | API-012 | `GET /v1/me/rooms` | 내 방 목록 | SPEC-039 | TBL-006, 007, 008 | 200, 401, 403, default |
 | API-013 | `GET /v1/me/past-cards` | 지난 카드(20개씩, `cursor`) | SPEC-027 | TBL-010 | 200, 400, 401, 403, default |
 | API-014 | `GET /v1/me/data-summary` | 내 데이터 현황 | SPEC-028 | TBL-007~011 | 200, 401, 403, default |
-| API-015 | `DELETE /v1/me` | 내 데이터 지우기 | SPEC-014, 015, 026, 029 | TBL-001, 002, 006~011, 013, 014 | 204, 400, 401, 403, 429, default |
+| API-015 | `DELETE /v1/me` | 내 데이터 지우기 | SPEC-014, 015, 026, 029 | TBL-001, 002, 006~011, 013, 014 | 204, 400, 401, 403, 409, 429, default (DEC-048) |
 | API-016 | `POST /v1/entries` | 유입 경로 기록 | SPEC-001, SPEC-023 | TBL-014, 015 | 204, 400, 401, 403, 429, default |
 
 목록에 없는 응답은 operation마다 `x-corthex.omit`에 이유가 있어요(예: 읽기만 하는 operation의 409, 형식이 틀린 방 코드의 400).

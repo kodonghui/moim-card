@@ -237,6 +237,7 @@ for path, item in api["paths"].items():
             check(code not in responses, f"{api_id}: omit의 {code}가 응답에도 있지 않음")
         if any(p.get("$ref", "").endswith("IdempotencyKey") for p in operation.get("parameters", [])):
             check("400" in responses, f"{api_id}: Idempotency-Key가 필수라 400이 있음")
+            check("409" in responses and "idempotency-conflict" in responses.get("409", {}).get("content", {}).get("application/problem+json", {}).get("examples", {}), f"{api_id}: 요청 ID 충돌 409 예시가 있음")
         # request body examples
         req = operation.get("requestBody")
         if req:

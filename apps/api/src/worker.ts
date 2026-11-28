@@ -6,6 +6,7 @@ import { listMyRooms } from './my-rooms';
 import { listPastCards } from './past-cards';
 import { recordEntry } from './entries';
 import { getDataSummary } from './data-summary';
+import { deleteMyData } from './delete-data';
 import { subscribeNotification } from './subscriptions';
 import type { NotificationKeys } from './notification-crypto';
 import { requireSession } from './session';
@@ -30,6 +31,7 @@ export default {
       {method:'GET', path:'/v1/me/past-cards', middleware:requireSession(env.DB), handler: (req, userId) => listPastCards(req, env.DB, userId!)},
       {method:'POST', path:'/v1/entries', middleware:requireSession(env.DB), handler: (req, userId) => recordEntry(req, env.DB, userId!)},
       {method:'GET', path:'/v1/me/data-summary', middleware:requireSession(env.DB), handler: (_, userId) => getDataSummary(env.DB, userId!)},
+      {method:'DELETE', path:'/v1/me', handler: req => deleteMyData(req, env.DB)},
       {method:'POST', path:'/v1/rooms/:roomCode/notification-subscription', handler: req => subscribeNotification(req, env)},
     ]).fetch(request);
   },
