@@ -1,5 +1,33 @@
 # 진행 기록
 
+### 2026-11-28 · 09 목업 확정과 토큰 고정
+
+- Done: 토링이가 전한 오랑이 답(사용자님 주말 위임 "너가 다른애들 승인을 하던 말던 해라" 근거)을 DEC-035로 기록했어요: 09 목업 확정(A 바탕 + 합의 카드만 B 모양, PR #10 커밋 `e03ce6f`), 토큰 고정, PR #10 병합 승인(병합은 토링이). DEC-032를 in force로 바꾸고, `design/base.tokens.json` 설명에 고정 표시를 넣었어요. `.corthex/stages.json`의 09를 `done`으로 바꾸고 체크포인트를 적었어요. [09-mockup/README.md](../09-mockup/README.md)의 상태 줄과 질문 답을 고쳤어요.
+- Why: 토링이 작업 지시(2026-11-28, Orca 작업 task_3aeb4fbf9b22). 09는 원래 사용자님이 직접 보는 단계였고, 이번 통과는 주말 위임에 따른 오랑이 답이에요.
+- Result: 09 통과, 토큰 고정. 바꾸려면 새 결정이 필요해요.
+- 개발 단계 확인 항목(목업에서 재지 않음, 11 개발·12 QA에서 확인):
+  1. 실제 토스 앱 WebView에서 TDS 컴포넌트로 그렸을 때의 모습(버튼 모양, Toss Product Sans 글꼴, 합의 카드 색이 카드 안에만 있는지, 360·430px)
+  2. 스크린 리더(iOS VoiceOver, Android TalkBack)가 읽는 순서와 이름(선택지, 진행 막대, 확인 창, 합의 카드의 분류와 수)
+  3. 키보드 Tab 순서와 포커스 표시(확인 창 안에 포커스가 머무는지, 포커스가 붙은 아래 버튼에 가려지지 않는지)
+- Checked: term-check, `scripts/check-screens.py`, `tokens.py check`, hub snapshot과 `push --dry-run` 결과는 PR #10과 보고에 적어요.
+- Next: PR #10 병합(토링이) → `push moim-card` → 10 WBS.
+
+### 2026-11-28 · 09 목업: A 바탕 + 카드만 B로 화면 15개
+
+- Done: 사용자님 답(Orca 항목 256, e4535) "A 바탕 + 카드만 B(추천)"을 DEC-033으로, "방장 화면 버튼 3개 이대로"를 DEC-034로 기록했어요. 토큰을 `design/base.tokens.json` 한 벌로 합치고 합의 카드 색을 `color.card` 그룹에 뒀어요(시안별 토큰 파일과 시안 페이지는 지우고 캡처는 captures/candidates/에 남김). [scripts/draw-mockups.py](../../scripts/draw-mockups.py)를 다시 써서 08 상태 표에서 상태 목록을 읽어 화면 15개·상태 70개를 [design/mockups/mockup.html](../../design/mockups/mockup.html)에 그렸어요. 08 화면 정의 15개에 "목업" 절(목업 링크, 정한 배치와 문구)을 더했어요. 캡처 세 장을 [design/mockups/captures/](../../design/mockups/captures/)에 뒀어요. 사용자님 최종 확인 질문은 [09-mockup/README.md](../09-mockup/README.md) 3절이에요.
+- Why: 사용자님 답. 토링이 작업 지시(2026-11-28, Orca 작업 task_893835285720).
+- Result: 홈·문항은 시안 A 그대로, 합의 카드·최종 카드·지난 카드 자세히는 카드 한 장 모양이에요. DEC-032(AI 제안)를 08과 목업에 반영했고, 확정은 최종 확인 답을 기다려요.
+- Checked: `tokens.py check` 색 29개·토큰 밖 0. page-check.js 292번(상태 70 × 360·430px × 보통·가장 긴 글자, 그리고 참여자·처음 온 사람 보기 12번) 오류 0·경고 0·참고 0. 대비는 손으로 계산해 모두 기준 이상. 스크립트로 누르기 23개 통과, 카드 색이 카드 밖에 쓰인 요소 0개. `scripts/check-screens.py` 통과 1490·실패 0. 눈으로 본 것은 캡처 세 장(정상 상태 15개 화면, 360px)이고 나머지 상태와 430px은 숫자로만 쟀어요. 키보드 순서·스크린 리더·실제 토스 WebView는 재지 않았어요.
+- Next: 사용자님 최종 확인 → 통과 기록(토큰 고정) → 10 WBS.
+
+### 2026-11-28 · 09 목업 시안 A·B (세 화면)
+
+- Done: 사용자님 답 "A·B 두 시안, 세 화면만(추천)"(Orca 항목 256, e4475)을 DEC-031로 기록하고, `corthex-screen`·`corthex-uxui`로 시안 A(토스처럼 깔끔하게)와 B(모임 카드처럼 따뜻하게)를 SCR-002 홈, SCR-007 문항, SCR-009 합의 카드에 상태 18개씩, 360·430px로 누를 수 있는 HTML로 만들었어요([design/mockups/](../../design/mockups/), 그리기 [scripts/draw-mockups.py](../../scripts/draw-mockups.py)). 토큰은 [design/](../../design/)의 base·candidate-a·candidate-b·resolver예요(DEC-030). 캡처 두 장을 [design/mockups/captures/](../../design/mockups/captures/)에 뒀어요. 방장 화면의 버튼 수·문구 길이를 화면마다 아래에 보이게 했어요(DEC-028 요청). AI가 정한 것은 DEC-032(proposed).
+- Why: 07·08 통과(DEC-027~029) 뒤 09 시작. 토링이 작업 지시(2026-11-28, Orca 작업 task_2e83e49bf143).
+- Result: 사용자님께 질문 두 개(어느 시안으로 갈지, 방장 화면 버튼 수)를 [09-mockup/README.md](../09-mockup/README.md) 5절에 뒀어요. 추천은 시안 A, 버튼 수는 이대로예요.
+- Checked: `tokens.py check` 색 54개·토큰 밖 0. page-check.js 144번(시안 2 × 폭 2 × 글자 2 × 상태 18) 오류 0·경고 0(처음 고아 단어 경고 20개를 고침). 컨트롤 테두리·상태 표시 3:1은 손으로 계산(B 바탕에서 2.89라 토큰을 #808A96으로 바꿈). 스크립트로 누르기 28개 통과. Orca 내장 브라우저를 이 호스트에서 쓸 수 없어, Playwright의 Chromium headless에 빠진 시스템 라이브러리를 스크래치 폴더에 풀어 렌더했어요(시스템 설치 없음). 눈으로 본 것은 세 화면 정상 상태 360px과 B 가장 긴 글자 위쪽이고, 나머지는 숫자로만 쟀어요. 키보드 순서·스크린 리더·실제 토스 WebView는 재지 않았어요.
+- Next: 사용자님 답 → 결정 기록 → 고른 방향으로 나머지 12개 화면과 08 화면 정의 반영 → 토큰 고정 체크포인트.
+
 ### 2026-11-28 · 07·08 체크포인트 답 기록과 통과
 
 - Done: 토링이가 전한 오랑이 답(사용자님 위임, 근거 2026-11-23 "추천 모두 승인", 2026-11-27 "DDD랑 목업때만")을 DEC-027(07 질문 1, 화면 15개 구조), DEC-028(08 질문 1, 화면 정의 15개·상태 70개), DEC-029(08 질문 2, 지운 뒤 자동으로 처음 화면에 가지 않음)로 기록하고 DEC-026을 in force로 바꿨어요. 결정된 문장과 상태 칸만 고쳤어요: FL-012 "지워졌어요 안내" 문장과 상태 줄, SCR-013 규칙, 두 체크포인트 파일의 상태 줄과 답, 07·08 README 상태 줄. `.corthex/stages.json`의 07·08을 `done`으로 바꾸고 체크포인트를 적었어요. 오랑이 요청(목업 때 방장 화면 버튼 수와 문구 길이를 사용자님과 같이 봄)을 [09 준비](../09-mockup/prep.md)에 한 줄 더했어요.

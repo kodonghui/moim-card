@@ -39,6 +39,13 @@
       "source": "docs/08-screens/",
       "truth": "source",
       "note": "2026-11-28: on_nexus 프로젝트라 기본 human view인 NEXUS의 화면·상태 목록을 써요. 회색 와이어프레임은 docs/08-screens/wireframes.html(scripts/draw-screens.py가 그림), 검사는 python3 scripts/check-screens.py예요."
+    },
+    "09-mockup": {
+      "human": "nexus",
+      "source": "design/base.tokens.json",
+      "truth": "source",
+      "note": "2026-11-28: on_nexus 프로젝트라 NEXUS에 단계 기록·질문을 두고, 목업은 저장소 안 HTML design/mockups/mockup.html(scripts/draw-mockups.py가 토큰과 08 상태 표에서 그림)로 봐요. Figma·Claude Design은 쓰지 않았어요. 바탕은 CORTHEX 기본(Carbon)이 아니라 이 앱의 토큰이에요(DEC-030). 방향은 A 바탕 + 합의 카드만 B(DEC-033).",
+      "page": "design/mockups/mockup.html"
     }
   }
 }
