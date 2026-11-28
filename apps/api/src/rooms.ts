@@ -70,3 +70,18 @@ export async function createRoom(request: Request, db: D1Database, now = Math.fl
   }
   throw new Error('Theme changed repeatedly');
 }
+
+export async function getRoom(request: Request, db: D1Database, now = Math.floor(Date.now()/1000)): Promise<Response> {
+  const user = await findSessionUser(db,request.headers.get('Authorization') ?? undefined,now);
+  if (!user) return problemResponse('unauthenticated');
+  const code = new URL(request.url).pathname.split('/').pop() ?? '';
+  if (!/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10}$/.test(code)) return problemResponse('room_not_found');
+  const row = await db.prepare(`SELECT r.code AS roomCode,r.gathering_name AS gatheringName,r.party_size AS partySize,
+    r.submitted_count AS submittedCount,r.participant_count AS participantCount,r.status,t.id AS themeId,t.name AS themeName,
+    COALESCE(p.role,'none') AS myRole,CASE WHEN resp.participant_id IS NULL THEN 0 ELSE 1 END AS mySubmitted
+    FROM rooms r JOIN question_sets q ON q.id=r.question_set_id JOIN themes t ON t.id=q.theme_id
+    LEFT JOIN participants p ON p.room_id=r.id AND p.user_id=? LEFT JOIN responses resp ON resp.participant_id=p.id
+    WHERE r.code=? AND r.expires_at>?`).bind(user,code,now).first<{roomCode:string;gatheringName:string;partySize:number;submittedCount:number;participantCount:number;status:string;themeId:string;themeName:string;myRole:string;mySubmitted:number}>();
+  if (!row) return problemResponse('room_not_found');
+  return Response.json({roomCode:row.roomCode,gatheringName:row.gatheringName,theme:{themeId:row.themeId,name:row.themeName},partySize:row.partySize,submittedCount:row.submittedCount,isFull:row.participantCount===8,status:row.status,myRole:row.myRole,mySubmitted:row.mySubmitted===1,asOf:new Date(now*1000).toISOString()});
+}
