@@ -5,11 +5,13 @@ import { listThemes } from './themes';
 import { listMyRooms } from './my-rooms';
 import { listPastCards } from './past-cards';
 import { recordEntry } from './entries';
+import { subscribeNotification } from './subscriptions';
+import type { NotificationKeys } from './notification-crypto';
 import { requireSession } from './session';
 import { submitResponse, getMyProfile, getCard, closeRoom } from './responses';
 import { createRoom, getRoom, joinRoom, getQuestions } from './rooms';
 
-interface Env extends SessionEnv { ORIGIN_PUBLIC: string; ORIGIN_PRIVATE: string }
+interface Env extends SessionEnv, NotificationKeys { ORIGIN_PUBLIC: string; ORIGIN_PRIVATE: string }
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     return createApi([env.ORIGIN_PUBLIC, env.ORIGIN_PRIVATE], [
@@ -26,6 +28,7 @@ export default {
       {method:'GET', path:'/v1/me/rooms', middleware:requireSession(env.DB), handler: (_, userId) => listMyRooms(env.DB, userId!)},
       {method:'GET', path:'/v1/me/past-cards', middleware:requireSession(env.DB), handler: (req, userId) => listPastCards(req, env.DB, userId!)},
       {method:'POST', path:'/v1/entries', middleware:requireSession(env.DB), handler: (req, userId) => recordEntry(req, env.DB, userId!)},
+      {method:'POST', path:'/v1/rooms/:roomCode/notification-subscription', handler: req => subscribeNotification(req, env)},
     ]).fetch(request);
   },
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {

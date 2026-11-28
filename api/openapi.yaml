@@ -1764,7 +1764,7 @@ paths:
       operationId: subscribeNotification
       summary: 알림 신청
       description: 화면이 먼저 `Notification.requestAgreement`(templateCode는 콘솔 기능성 캠페인의 발송 코드, 토스 앱 5.255.0 이상)로 동의를 받고, 결과가 `newAgreement`나 `alreadyAgreed`일 때만 새 인증 코드와 함께 이 API를 불러요(F-7, DEC-020). 서버는 코드를
-        교환해 받은 식별키의 HMAC이 세션 사용자의 key_hash와 같은지 본 뒤에만 식별키를 AES-256-GCM으로 암호화해 신청을 저장해요(TBL-011, DEC-019). 다르면 아무것도 쓰지 않고 403 identity_mismatch예요. 이미 신청했으면 200이에요.
+        교환해 받은 식별키의 HMAC이 세션 사용자의 key_hash와 같은지 본 뒤에만 식별키를 AES-256-GCM으로 암호화해 신청을 저장해요(TBL-011, DEC-019). 다르면 신청 행을 쓰지 않고 403 identity_mismatch예요. 토스 호출 한도와 403 요청 ID 기록은 남아요(DEC-047). 이미 신청했으면 200이에요.
       x-corthex:
         id: API-011
         spec:
