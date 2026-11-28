@@ -78,3 +78,15 @@ test('오류 뒤 같은 요청 ID로 입장을 다시 시도한다', async ({ pa
   await expect(page.getByLabel('닉네임')).toHaveValue('바다'); await page.getByRole('button', { name: '들어가기' }).click();
   await expect(page).toHaveURL(/\/room\/questions$/); expect(keys()).toHaveLength(2); expect(keys()[0]).toBe(keys()[1]);
 });
+test('재인증 실패는 확인 오류 화면으로 돌아간다', async ({ page }) => {
+  await mockPrism(page, 'GET', [{ code: 200, example: 'open-newcomer' }]); await mockPrism(page, 'POST', [{ code: 401 }]);
+  await joinForm(page); await page.getByRole('button', { name: '들어가기' }).click();
+  await expect(page).toHaveURL(/\/$/); await expect(page.getByRole('heading', { name: '확인하지 못했어요' })).toBeVisible();
+});
+test('시간 초과 뒤 같은 요청 ID로 입장을 다시 시도한다', async ({ page }) => {
+  await mockPrism(page, 'GET', [{ code: 200, example: 'open-newcomer' }]); const keys = await mockPrism(page, 'POST', [{ code: 201, example: 'joined', delay: 11000 }, { code: 201, example: 'joined' }]);
+  await joinForm(page); await page.getByRole('button', { name: '들어가기' }).click();
+  await expect(page.getByText('잠시 뒤 다시 해 주세요')).toBeVisible({ timeout: 15000 }); await expect(page.getByLabel('닉네임')).toHaveValue('바다');
+  await page.getByRole('button', { name: '들어가기' }).click(); await expect(page).toHaveURL(/\/room\/questions$/);
+  expect(keys()).toHaveLength(2); expect(keys()[0]).toBe(keys()[1]);
+});
