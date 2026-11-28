@@ -33,7 +33,8 @@ export class ApiClient {
         if (!(error instanceof ApiError)) throw error;
         if (error.problem.status === 401 && error.problem.code === 'unauthenticated' && request.authenticated !== false && request.retryAuthentication !== false && !refreshed) {
           refreshed = true;
-          this.token = await this.options.reauthenticate();
+          try { this.token = await this.options.reauthenticate(); }
+          catch { this.clearToken(); throw new ApiError({ status: 401, code: 'reauthentication_failed' }); }
           continue;
         }
         if (error.problem.code === 'idempotency_conflict' && key.value && !conflicted) {

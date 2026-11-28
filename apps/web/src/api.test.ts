@@ -12,6 +12,14 @@ describe('공통 API 처리', () => {
     expect(reauthenticate).toHaveBeenCalledTimes(1);
     expect(fetcher.mock.calls.map(call => call[1].headers.get('Authorization'))).toEqual(['Bearer old-token', 'Bearer new-token']);
   });
+  it('재확인이 실패하면 토큰을 지우고 실패 상태를 돌려준다', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(json({ status: 401, code: 'unauthenticated' }, 401)).mockResolvedValueOnce(json({ ok: true }));
+    const client = new ApiClient({ baseUrl: 'http://localhost', fetcher, reauthenticate: vi.fn().mockRejectedValue(new Error('failed')) });
+    client.setToken('expired-token');
+    await expect(client.operation('/v1/themes')()).rejects.toMatchObject({ problem: { code: 'reauthentication_failed' } });
+    await client.operation('/v1/themes')();
+    expect(fetcher.mock.calls[1][1].headers.has('Authorization')).toBe(false);
+  });
   it('시간 초과 후 같은 요청 ID를 쓰고 동시에 누른 요청은 합친다', async () => {
     vi.useFakeTimers();
     const fetcher = vi.fn().mockImplementationOnce(() => new Promise(() => {})).mockResolvedValueOnce(json({ ok: true }));
@@ -84,5 +92,33 @@ describe('공통 API 처리', () => {
     await expect(client.operation('/v1/rooms', { method: 'POST', idempotent: true })()).rejects.toBeInstanceOf(ApiError);
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(fetcher.mock.calls[0][1].headers.get('Idempotency-Key')).not.toBe(fetcher.mock.calls[1][1].headers.get('Idempotency-Key'));
+  });
+});
+
+describe.skipIf(!process.env.PRISM_URL)('Prism 공통 응답', () => {
+  const baseUrl = process.env.PRISM_URL!;
+  function selected(statuses: number[]): typeof fetch {
+    return async (input, init) => {
+      const headers = new Headers(init?.headers);
+      headers.set('Prefer', `code=${statuses.shift() ?? 200}`);
+      return fetch(input, { ...init, headers });
+    };
+  }
+  it('401 뒤 재확인하고 같은 요청을 정상 응답으로 다시 보낸다', async () => {
+    const reauthenticate = vi.fn().mockResolvedValue('fresh');
+    const client = new ApiClient({ baseUrl, fetcher: selected([401, 200]), reauthenticate });
+    client.setToken('expired');
+    const result = await client.operation<{ rooms: unknown[] }>('/v1/me/rooms')();
+    expect(result.rooms.length).toBeGreaterThan(0); expect(reauthenticate).toHaveBeenCalledOnce();
+  });
+  it('403 Origin 거부와 500 오류 코드·번호를 전달한다', async () => {
+    for (const [status, code] of [[403, 'origin_not_allowed'], [500, 'internal']] as const) {
+      const client = new ApiClient({ baseUrl, fetcher: selected([status]), reauthenticate: vi.fn() }); client.setToken('token');
+      await expect(client.operation('/v1/me/rooms')()).rejects.toMatchObject({ problem: { status, code, traceId: expect.any(String) } });
+    }
+  });
+  it('429의 Retry-After를 전달한다', async () => {
+    const client = new ApiClient({ baseUrl, fetcher: selected([429]), reauthenticate: vi.fn() });
+    await expect(client.operation('/v1/sessions', { method: 'POST', authenticated: false, body: { authCode: 'example' } })()).rejects.toMatchObject({ problem: { status: 429, code: 'rate_limited' }, retryAfter: 30 });
   });
 });
