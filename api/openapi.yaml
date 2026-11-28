@@ -1,0 +1,3536 @@
+# moim-card 06 API 계약 (OpenAPI 3.1). 이 파일이 원본이에요: 계약을 먼저 고치고 코드를 고쳐요.
+# 출처: docs/04-functional-spec/spec.md (SPEC), db/schema.sql (TBL). 검사: python3 scripts/check-contract.py
+openapi: 3.1.0
+info:
+  title: moim-card API
+  version: 0.1.0
+  summary: 모임 합의 카드(가칭) 미니앱의 서버 계약 (06 API, 체크포인트 전 초안)
+  description: |-
+    Cloudflare Workers + D1 서버가 앱인토스 WebView(SDK 3.x) 화면에 주는 계약이에요. 계약이 먼저이고 코드는 이 파일을 따라요.
+
+    - 출처: 04 기능 명세 SPEC-001~039, 05 ERD TBL-001~015(db/schema.sql). 각 operation의 `x-corthex`에 API ID·SPEC·TBL이 있어요.
+    - 인증: API-001로 받은 세션 토큰을 `Authorization: Bearer`로 보내요(DEC-017).
+    - Origin: 허용된 두 Origin(`https://<appName>.apps.tossmini.com`, `https://<appName>.private-apps.tossmini.com`)만 받아요. `Origin` 헤더가 없거나 다르면 403 origin_not_allowed예요(SPEC-038). 계약 테스트도 허용된 Origin 헤더를 붙여요.
+    - 같은 요청 두 번(C-3): 상태를 바꾸는 6개 operation은 `Idempotency-Key`(UUID)가 필수예요. 같은 사용자·같은 키면 24시간 동안 첫 결과를 다시 돌려줘요.
+    - 입력 오류는 모두 400이에요(422를 쓰지 않음). 모든 오류는 `application/problem+json`의 Problem 모양이고 code는 `components.x-corthex.errors`에 있는 것만 써요.
+    - 서버 안 작업(HTTP operation 아님): 방 만료 Cron(SPEC-030, 매시간), 알림 발송(SPEC-025, API-007 커밋 뒤), 알림 신청 정리(SPEC-026, 마감·만료·지우기 batch 안), 요청 ID·한도 계수·만료 세션 정리. `x-corthex.jobs`에 있어요.
+servers:
+- url: http://127.0.0.1:8787
+  description: wrangler dev(로컬). 스테이징·실서비스 주소는 11 개발 단계에서 정해요
+security:
+- bearerAuth: []
+tags:
+- name: moim-card
+paths:
+  /v1/sessions:
+    post:
+      operationId: createSession
+      summary: 인증 코드를 교환해 세션 시작
+      description: 화면이 `User.createAnonymousKeyAuthCode()`로 받은 일회용 인증 코드를 보내요. 서버는 토스 파트너 API `POST /api-partner/v1/apps-in-toss/users/anon-key/exchange`(mTLS)로 교환해 `anonKey`를 받고, HMAC 해시로 사용자를 찾거나 만들어요(TBL-001).
+        세션 토큰(무작위 256비트, base64url 43자)을 새로 발급하고 D1에는 SHA-256 해시만 둬요(TBL-002, DEC-017). 토스 응답은 HTTP 200이어도 `resultType`이 `SUCCESS`가 아니면 실패로 다뤄요(F-6, DEC-020). 식별키는 응답·로그에 넣지 않아요(C-7).
+      x-corthex:
+        id: API-001
+        spec:
+        - SPEC-002
+        - SPEC-003
+        - SPEC-038
+        tables:
+        - TBL-001
+        - TBL-002
+        - TBL-014
+        omit:
+          '404': 경로가 자원을 가리키지 않아요
+          '409': 교환할 때마다 새 세션이 생겨 기존 상태와 부딪히지 않아요
+        cases:
+          access: 세션 없이 부름(인증 코드가 확인 수단), Origin 확인
+          repeats: 같은 코드는 두 번 쓰이지 않아 두 번째는 401
+          outside: 토스 오류·시간 초과는 401 auth_failed(SPEC-002가 확인 실패로 묶음)
+          exposure: 식별키·해시·사용자 ID를 넣지 않음
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SessionRequest'
+            examples:
+              code:
+                summary: SDK가 준 인증 코드
+                value:
+                  authCode: a1b2c3d4e5f60718293a4b5c6d7e8f90
+      responses:
+        '201':
+          description: 세션 시작. 처음 온 사용자면 사용자 행 1개가 생김
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+              examples:
+                started:
+                  summary: 세션 토큰 발급
+                  value:
+                    sessionToken: q8Xk2v0mZtR5bN1cY7wLp3sH9dF4gJ6aE2uC0oI8kT1
+                    expiresAt: '2026-11-28T21:30:00Z'
+        '400':
+          description: 인증 코드가 없거나 형식이 틀림
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                auth-code-missing:
+                  summary: authCode가 없음
+                  value:
+                    type: about:blank
+                    title: 칸 옆의 안내를 확인해 주세요
+                    status: 400
+                    code: validation_failed
+                    traceId: 14c7a7db483d4135
+                    errors:
+                    - field: authCode
+                      reason: required
+                not-json:
+                  $ref: '#/components/examples/not-json'
+        '401':
+          description: 인증 코드를 확인하지 못함(만료·재사용·위조, 토스 오류·시간 초과). D1에 쓴 행은 0개
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                code-reused:
+                  summary: 이미 교환한 코드(토스 4011)
+                  value:
+                    type: about:blank
+                    title: 확인하지 못했어요
+                    status: 401
+                    code: auth_failed
+                    traceId: e1b9626031725d4d
+                toss-timeout:
+                  summary: 토스 API가 5초 안에 답하지 않음
+                  value:
+                    type: about:blank
+                    title: 확인하지 못했어요
+                    status: 401
+                    code: auth_failed
+                    traceId: e913d02127fcade1
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        '429':
+          description: 토스 API 한도(미니앱당 분당 3,000건, 토스 4095)를 넘어 교환하지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                toss-app-limit:
+                  summary: 미니앱 전체 토스 API 한도 초과
+                  value:
+                    type: about:blank
+                    title: 잠시 뒤 다시 해 주세요
+                    status: 429
+                    code: rate_limited
+                    traceId: c036bd3f305d4faa
+          headers:
+            Retry-After:
+              description: 다시 보내도 되는 때까지 남은 초
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+              example: 30
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/themes:
+    get:
+      operationId: listThemes
+      summary: 테마 목록
+      description: 배포된 테마와 각 테마의 최신 문항 세트 버전(status = published 중 가장 큰 version)을 sort_order 순으로 돌려줘요(TERM-036). 0개면 빈 목록이에요.
+      x-corthex:
+        id: API-002
+        spec:
+        - SPEC-004
+        tables:
+        - TBL-003
+        - TBL-004
+        omit:
+          '400': 입력이 없어요
+          '404': 경로가 자원을 가리키지 않아요
+          '409': 읽기만 해요
+          '429': 읽기 요청은 C-6 한도에 세지 않아요
+        cases:
+          empty: '배포된 테마 0개면 themes: []'
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 테마 목록. 비어 있을 수 있음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThemeList'
+              examples:
+                three-themes:
+                  summary: 배포된 테마 3개
+                  value:
+                    themes:
+                    - themeId: travel
+                      name: 여행
+                      questionSetVersion: 1
+                    - themeId: dinner
+                      name: 회식·저녁
+                      questionSetVersion: 2
+                    - themeId: weekend
+                      name: 주말 나들이
+                      questionSetVersion: 1
+                empty:
+                  summary: 배포된 테마 0개
+                  value:
+                    themes: []
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/rooms:
+    post:
+      operationId: createRoom
+      summary: 방 만들기
+      description: 그 테마의 배포된 최신 문항 세트 버전을 고정한 방을 만들고 방 코드(C-5)를 발급해요. 방장을 첫 참여자로 등록해요. 한 D1 batch예요. 모임 이름·닉네임은 앞뒤 공백을 지운 뒤 길이를 다시 봐요(공백만이면 빈 값). 보낸 값 자체도 maxLength를 넘으면 받지 않아요.
+      x-corthex:
+        id: API-003
+        spec:
+        - SPEC-005
+        - SPEC-008
+        tables:
+        - TBL-003
+        - TBL-004
+        - TBL-006
+        - TBL-007
+        - TBL-013
+        - TBL-014
+        omit:
+          '404': 경로가 자원을 가리키지 않아요. 없는 테마는 409 theme_unavailable이에요
+        cases:
+          repeats: 같은 Idempotency-Key면 방은 하나이고 첫 응답(같은 방 코드)을 다시 돌려줌
+          limits: 방 만들기 24시간 30개, 쓰기 분당 60건
+          exposure: 방 코드·모임 이름·인원·테마만
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRoom'
+            examples:
+              jeju:
+                summary: 제주 3박, 인원 4
+                value:
+                  themeId: travel
+                  gatheringName: 제주 3박
+                  partySize: 4
+                  hostNickname: 민지
+      responses:
+        '201':
+          description: 방이 생김
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedRoom'
+              examples:
+                created:
+                  summary: 여행 v1, 인원 4
+                  value:
+                    roomCode: ABCDEFGH23
+                    gatheringName: 제주 3박
+                    partySize: 4
+                    theme:
+                      themeId: travel
+                      name: 여행
+        '400':
+          description: 요청 형식이나 입력 값이 틀림. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                party-size-out-of-range:
+                  summary: 인원 9
+                  value:
+                    type: about:blank
+                    title: 칸 옆의 안내를 확인해 주세요
+                    status: 400
+                    code: validation_failed
+                    traceId: 24c5c3fa11bdc958
+                    errors:
+                    - field: partySize
+                      reason: out_of_range
+                name-blank-and-nickname-banned:
+                  summary: 모임 이름이 공백뿐이고 닉네임에 금칙어
+                  value:
+                    type: about:blank
+                    title: 칸 옆의 안내를 확인해 주세요
+                    status: 400
+                    code: validation_failed
+                    traceId: 611db07b4a436310
+                    errors:
+                    - field: gatheringName
+                      reason: required
+                    - field: hostNickname
+                      reason: banned_word
+                missing-idempotency-key:
+                  $ref: '#/components/examples/missing-idempotency-key'
+                not-json:
+                  $ref: '#/components/examples/not-json'
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        '409':
+          description: 만들 수 없는 상태
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                theme-unavailable:
+                  summary: 고른 테마의 배포가 내려감
+                  value:
+                    type: about:blank
+                    title: 이 테마는 지금 쓸 수 없어요
+                    status: 409
+                    code: theme_unavailable
+                    traceId: 099bc07094c52e09
+                idempotency-conflict:
+                  $ref: '#/components/examples/idempotency-conflict'
+        '429':
+          description: 한도를 넘어 방을 만들지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-create-limit:
+                  summary: 방 만들기 사용자당 24시간 30개 초과
+                  value:
+                    type: about:blank
+                    title: 잠시 뒤 다시 해 주세요
+                    status: 429
+                    code: rate_limited
+                    traceId: 7e360da120b6e534
+                write-limit:
+                  $ref: '#/components/examples/write-limit'
+          headers:
+            Retry-After:
+              description: 다시 보내도 되는 때까지 남은 초
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+              example: 30
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/rooms/{roomCode}:
+    get:
+      operationId: getRoom
+      summary: 방 소개와 내 참여 상태
+      description: '방 코드로 방을 찾아 방 소개(TERM-037)와 내 역할·응답 여부를 돌려줘요. 화면은 이 값으로 나눠요: 열린 방·참여자 아님 → 방 소개, 참여자 → 문항 화면이나 내 결과, 마감 → 최종 카드 읽기 전용(API-009). 방장에게는 같은 값으로 응답 현황("인원 n명 중 m명", SPEC-017)을 보여요. 닉네임과
+        누가 답했는지는 넣지 않아요.'
+      x-corthex:
+        id: API-004
+        spec:
+        - SPEC-006
+        - SPEC-017
+        - SPEC-021
+        - SPEC-039
+        tables:
+        - TBL-006
+        - TBL-007
+        - TBL-008
+        omit:
+          '400': 형식이 틀린 방 코드도 404로 답해요(C-5, DEC-021)
+          '409': 읽기만 해요
+          '429': 읽기 요청은 C-6 한도에 세지 않아요
+        cases:
+          target: 없는·형식이 틀린·만료된 코드는 같은 404
+          exposure: 닉네임·누가 답했는지 없음, 참여자 수 대신 isFull
+          screens: status·myRole·mySubmitted로 화면을 나눔
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RoomCode'
+      responses:
+        '200':
+          description: 방이 있음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomView'
+              examples:
+                open-newcomer:
+                  summary: 열린 방, 참여자 아님
+                  value:
+                    roomCode: ABCDEFGH23
+                    gatheringName: 제주 3박
+                    theme:
+                      themeId: travel
+                      name: 여행
+                    partySize: 4
+                    submittedCount: 2
+                    isFull: false
+                    status: open
+                    myRole: none
+                    mySubmitted: false
+                    asOf: '2026-11-28T09:30:00Z'
+                open-host:
+                  summary: 방장이 보는 응답 현황
+                  value:
+                    roomCode: ABCDEFGH23
+                    gatheringName: 제주 3박
+                    theme:
+                      themeId: travel
+                      name: 여행
+                    partySize: 4
+                    submittedCount: 3
+                    isFull: false
+                    status: open
+                    myRole: host
+                    mySubmitted: true
+                    asOf: '2026-11-28T09:30:00Z'
+                open-full:
+                  summary: 8명이 찬 열린 방
+                  value:
+                    roomCode: ABCDEFGH23
+                    gatheringName: 제주 3박
+                    theme:
+                      themeId: travel
+                      name: 여행
+                    partySize: 8
+                    submittedCount: 5
+                    isFull: true
+                    status: open
+                    myRole: none
+                    mySubmitted: false
+                    asOf: '2026-11-28T09:30:00Z'
+                closed:
+                  summary: 마감된 방
+                  value:
+                    roomCode: ABCDEFGH23
+                    gatheringName: 제주 3박
+                    theme:
+                      themeId: travel
+                      name: 여행
+                    partySize: 4
+                    submittedCount: 4
+                    isFull: false
+                    status: closed
+                    myRole: none
+                    mySubmitted: false
+                    asOf: '2026-11-28T09:30:00Z'
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        '404':
+          description: 방이 없음. 형식이 틀린 코드·만료로 지워진 방도 같은 응답(C-5)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-not-found:
+                  $ref: '#/components/examples/room-not-found'
+                room-code-wrong-format:
+                  $ref: '#/components/examples/room-code-wrong-format'
+                room-expired:
+                  $ref: '#/components/examples/room-expired'
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/rooms/{roomCode}/participants:
+    post:
+      operationId: joinRoom
+      summary: 방 입장
+      description: 닉네임을 받아 참여자로 등록해요. 서버는 같은 batch에서 방 상태와 참여자 수를 조건으로 걸어 세요(C-4). 이미 참여자면 새로 만들지 않고 200으로 기존 참여를 돌려줘요.
+      x-corthex:
+        id: API-005
+        spec:
+        - SPEC-007
+        - SPEC-008
+        tables:
+        - TBL-006
+        - TBL-007
+        - TBL-013
+        - TBL-014
+        omit: {}
+        cases:
+          concurrency: 7명 방에 두 사람이 한꺼번에 오면 한 명만 201, 다른 사람은 409 room_full
+          repeats: 이미 참여자면 200
+          states: 마감 409 room_closed, 8명 409 room_full
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RoomCode'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinRequest'
+            examples:
+              nickname:
+                summary: 닉네임
+                value:
+                  nickname: 하늘
+      responses:
+        '200':
+          description: 이미 참여자. 바뀐 것이 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinResult'
+              examples:
+                already-member:
+                  summary: 다시 입장
+                  value:
+                    roomCode: ABCDEFGH23
+                    myRole: member
+                    mySubmitted: true
+        '201':
+          description: 참여자로 등록됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JoinResult'
+              examples:
+                joined:
+                  summary: 새 참여자
+                  value:
+                    roomCode: ABCDEFGH23
+                    myRole: member
+                    mySubmitted: false
+        '400':
+          description: 요청 형식이나 입력 값이 틀림. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                nickname-too-long:
+                  summary: 닉네임 11자
+                  value:
+                    type: about:blank
+                    title: 칸 옆의 안내를 확인해 주세요
+                    status: 400
+                    code: validation_failed
+                    traceId: 06d7400c1eb7063a
+                    errors:
+                    - field: nickname
+                      reason: too_long
+                nickname-control-character:
+                  summary: 닉네임에 줄바꿈
+                  value:
+                    type: about:blank
+                    title: 칸 옆의 안내를 확인해 주세요
+                    status: 400
+                    code: validation_failed
+                    traceId: ccf471f200aa8bac
+                    errors:
+                    - field: nickname
+                      reason: control_character
+                missing-idempotency-key:
+                  $ref: '#/components/examples/missing-idempotency-key'
+                not-json:
+                  $ref: '#/components/examples/not-json'
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        '404':
+          description: 방이 없음. 형식이 틀린 코드·만료로 지워진 방도 같은 응답(C-5)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-not-found:
+                  $ref: '#/components/examples/room-not-found'
+                room-code-wrong-format:
+                  $ref: '#/components/examples/room-code-wrong-format'
+                room-expired:
+                  $ref: '#/components/examples/room-expired'
+        '409':
+          description: 입장할 수 없는 상태. 참여자는 늘지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-full:
+                  summary: 8명이 참(동시 입장에서 진 쪽 포함)
+                  value:
+                    type: about:blank
+                    title: 이 방은 8명이 다 찼어요
+                    status: 409
+                    code: room_full
+                    traceId: d66f6df24f34451f
+                room-closed:
+                  $ref: '#/components/examples/room-closed'
+                idempotency-conflict:
+                  $ref: '#/components/examples/idempotency-conflict'
+        '429':
+          description: 요청 한도를 넘음. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                write-limit:
+                  $ref: '#/components/examples/write-limit'
+          headers:
+            Retry-After:
+              description: 다시 보내도 되는 때까지 남은 초
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+              example: 30
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/rooms/{roomCode}/questions:
+    get:
+      operationId: getQuestions
+      summary: 문항 화면
+      description: 방에 고정된 문항 세트 버전의 문항 8개를 돌려줘요(TERM-038). 조율 제안 문구·확정 문구·축 매핑은 넣지 않아요(카드·성향 계산은 서버가 해요).
+      x-corthex:
+        id: API-006
+        spec:
+        - SPEC-010
+        tables:
+        - TBL-005
+        - TBL-006
+        - TBL-007
+        - TBL-008
+        omit:
+          '400': 형식이 틀린 방 코드도 404예요(C-5)
+          '429': 읽기 요청은 C-6 한도에 세지 않아요
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RoomCode'
+      responses:
+        '200':
+          description: 문항 8개
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionView'
+              examples:
+                travel-v1:
+                  summary: 여행 v1
+                  value:
+                    questionSetVersion: 1
+                    questions:
+                    - position: 1
+                      prompt: 도착 첫날 저녁은?
+                      optionA: 맛집 줄 서기
+                      optionB: 숙소 근처 아무 데나
+                    - position: 2
+                      prompt: 일정은 얼마나 짤까?
+                      optionA: 시간 단위로
+                      optionB: 큰 틀만
+                    - position: 3
+                      prompt: 숙소는?
+                      optionA: 위치가 먼저
+                      optionB: 가격이 먼저
+                    - position: 4
+                      prompt: 이동은?
+                      optionA: 렌터카
+                      optionB: 대중교통
+                    - position: 5
+                      prompt: 아침은?
+                      optionA: 일찍 나가기
+                      optionB: 느긋하게
+                    - position: 6
+                      prompt: 기념품은?
+                      optionA: 챙겨 사기
+                      optionB: 안 사도 됨
+                    - position: 7
+                      prompt: 비가 오면?
+                      optionA: 실내 계획으로
+                      optionB: 그래도 나가기
+                    - position: 8
+                      prompt: 돈 관리는?
+                      optionA: 공동 지갑
+                      optionB: 각자 계산
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+                not-participant:
+                  $ref: '#/components/examples/not-participant'
+        '404':
+          description: 방이 없음. 형식이 틀린 코드·만료로 지워진 방도 같은 응답(C-5)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-not-found:
+                  $ref: '#/components/examples/room-not-found'
+                room-code-wrong-format:
+                  $ref: '#/components/examples/room-code-wrong-format'
+                room-expired:
+                  $ref: '#/components/examples/room-expired'
+        '409':
+          description: 문항 화면을 열 상태가 아님
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                already-submitted:
+                  summary: 이미 응답함, 내 결과로
+                  value:
+                    type: about:blank
+                    title: 이미 답했어요
+                    status: 409
+                    code: already_submitted
+                    traceId: 135bf178d9095356
+                room-closed:
+                  $ref: '#/components/examples/room-closed'
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/rooms/{roomCode}/responses:
+    post:
+      operationId: submitResponse
+      summary: 응답 제출
+      description: '문항 8개의 답을 받아 한 D1 batch에서: 방이 열려 있는지 조건을 걸어 응답을 저장하고 응답 완료 수를 늘려요. 응답 완료가 2명 이상이면 중간 카드를 만들거나 갱신하고(SPEC-014), 인원에 닿으면 방을 마감하고 최종 카드를 확정하고 지난 카드 요약을 남기고 그 방의 알림 신청을 지워요(SPEC-015, SPEC-026).
+        알림 발송(SPEC-025)은 커밋 뒤에 해요: 같은 batch에서 읽어 둔 신청(본인 제외)의 암호문을 메모리에서만 복호화해 보내므로, 마지막 응답으로 방이 마감돼도 신청자는 알림을 받아요. Open: 마지막 응답의 알림을 보낼지는 06 체크포인트 질문 2예요(REQ-058과 SPEC-026 동시성 문장). `logConversion`이 true면
+        화면이 `Analytics.log`(log_name `interim_card_created`, log_type `event`)를 한 번 불러요(SPEC-018, F-2, DEC-020). 다른 요청 ID로 다시 내면 409 already_submitted이고, 저장된 결과는 API-008·API-009로 불러와요.'
+      x-corthex:
+        id: API-007
+        spec:
+        - SPEC-011
+        - SPEC-012
+        - SPEC-014
+        - SPEC-015
+        - SPEC-018
+        - SPEC-025
+        - SPEC-026
+        tables:
+        - TBL-005
+        - TBL-006
+        - TBL-007
+        - TBL-008
+        - TBL-009
+        - TBL-010
+        - TBL-011
+        - TBL-012
+        - TBL-013
+        - TBL-014
+        omit: {}
+        cases:
+          concurrency: 인원 4·응답 3에 두 사람이 한꺼번에 내면 한 명만 201, 다른 사람은 409 room_closed(C-4)
+          repeats: 같은 Idempotency-Key면 첫 201을 다시 돌려줌
+          states: 마감 409 room_closed, 이미 냄 409 already_submitted
+          outside: 알림 발송 실패는 이 응답에 영향 없음(SPEC-025)
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RoomCode'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResponseSubmission'
+            examples:
+              eight-answers:
+                summary: 문항 8개
+                value:
+                  answers:
+                  - position: 1
+                    choice: A
+                  - position: 2
+                    choice: B
+                  - position: 3
+                    choice: A
+                  - position: 4
+                    choice: none
+                  - position: 5
+                    choice: B
+                  - position: 6
+                    choice: none
+                  - position: 7
+                    choice: A
+                  - position: 8
+                    choice: A
+      responses:
+        '201':
+          description: 응답이 저장됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitResult'
+              examples:
+                second-response:
+                  summary: 두 번째 응답, 첫 중간 카드
+                  value:
+                    roomStatus: open
+                    submittedCount: 2
+                    partySize: 4
+                    cardStage: interim
+                    logConversion: true
+                    profile:
+                      summary: 큰 틀만 정하고 가는 편이에요
+                      axes:
+                      - axis: plan_speed
+                        band: low
+                      - axis: spending_priority
+                        band: balanced
+                      - axis: schedule_change
+                        band: high
+                last-response:
+                  summary: 네 번째 응답으로 자동 마감
+                  value:
+                    roomStatus: closed
+                    submittedCount: 4
+                    partySize: 4
+                    cardStage: final
+                    logConversion: false
+                    profile:
+                      summary: 큰 틀만 정하고 가는 편이에요
+                      axes:
+                      - axis: plan_speed
+                        band: low
+                      - axis: spending_priority
+                        band: balanced
+                      - axis: schedule_change
+                        band: high
+                solo-first:
+                  summary: 혼자 만든 방의 첫 응답
+                  value:
+                    roomStatus: open
+                    submittedCount: 1
+                    partySize: 4
+                    cardStage: none
+                    logConversion: false
+                    profile:
+                      summary: 그때그때 맞추는 편이에요
+                      axes:
+                      - axis: plan_speed
+                        band: low
+                      - axis: schedule_change
+                        band: high
+        '400':
+          description: 요청 형식이나 입력 값이 틀림. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                seven-answers:
+                  summary: 7개만 고름
+                  value:
+                    type: about:blank
+                    title: 칸 옆의 안내를 확인해 주세요
+                    status: 400
+                    code: validation_failed
+                    traceId: 4b33bc1cda1d3ae5
+                    errors:
+                    - field: answers
+                      reason: wrong_count
+                      positions:
+                      - 8
+                invalid-choice:
+                  summary: A·B·상관없어요 밖의 값
+                  value:
+                    type: about:blank
+                    title: 칸 옆의 안내를 확인해 주세요
+                    status: 400
+                    code: validation_failed
+                    traceId: e315a60710d1e2e5
+                    errors:
+                    - field: answers
+                      reason: invalid_choice
+                      positions:
+                      - 3
+                missing-idempotency-key:
+                  $ref: '#/components/examples/missing-idempotency-key'
+                not-json:
+                  $ref: '#/components/examples/not-json'
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+                not-participant:
+                  $ref: '#/components/examples/not-participant'
+        '404':
+          description: 방이 없음. 형식이 틀린 코드·만료로 지워진 방도 같은 응답(C-5)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-not-found:
+                  $ref: '#/components/examples/room-not-found'
+                room-code-wrong-format:
+                  $ref: '#/components/examples/room-code-wrong-format'
+                room-expired:
+                  $ref: '#/components/examples/room-expired'
+        '409':
+          description: 저장하지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                already-submitted:
+                  summary: 이미 냄, 저장된 응답은 그대로
+                  value:
+                    type: about:blank
+                    title: 이미 답했어요
+                    status: 409
+                    code: already_submitted
+                    traceId: 036e2fd44e6c2cd9
+                room-closed:
+                  $ref: '#/components/examples/room-closed'
+                idempotency-conflict:
+                  $ref: '#/components/examples/idempotency-conflict'
+        '429':
+          description: 요청 한도를 넘음. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                write-limit:
+                  $ref: '#/components/examples/write-limit'
+          headers:
+            Retry-After:
+              description: 다시 보내도 되는 때까지 남은 초
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+              example: 30
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/rooms/{roomCode}/my-profile:
+    get:
+      operationId: getMyProfile
+      summary: 내 모임 성향
+      description: 내 응답과 방의 축 매핑으로 열 때마다 계산해요. 저장하지 않아요(TERM-023). 묶인 문항이 0개인 축은 빼요. 점수 숫자·유형 이름은 없어요.
+      x-corthex:
+        id: API-008
+        spec:
+        - SPEC-012
+        tables:
+        - TBL-005
+        - TBL-007
+        - TBL-008
+        omit:
+          '400': 형식이 틀린 방 코드도 404예요(C-5)
+          '409': 읽기만 해요
+          '429': 읽기 요청은 C-6 한도에 세지 않아요
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RoomCode'
+      responses:
+        '200':
+          description: 내 모임 성향
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonalProfile'
+              examples:
+                three-axes:
+                  summary: 3개 축
+                  value:
+                    summary: 큰 틀만 정하고 가는 편이에요
+                    axes:
+                    - axis: plan_speed
+                      band: low
+                    - axis: spending_priority
+                      band: balanced
+                    - axis: schedule_change
+                      band: high
+                two-axes:
+                  summary: 한 축에 묶인 문항이 없음
+                  value:
+                    summary: 그때그때 맞추는 편이에요
+                    axes:
+                    - axis: plan_speed
+                      band: low
+                    - axis: schedule_change
+                      band: high
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+                not-participant:
+                  $ref: '#/components/examples/not-participant'
+                response-required:
+                  $ref: '#/components/examples/response-required'
+        '404':
+          description: 방이 없음. 형식이 틀린 코드·만료로 지워진 방도 같은 응답(C-5)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-not-found:
+                  $ref: '#/components/examples/room-not-found'
+                room-code-wrong-format:
+                  $ref: '#/components/examples/room-code-wrong-format'
+                room-expired:
+                  $ref: '#/components/examples/room-expired'
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/rooms/{roomCode}/card:
+    get:
+      operationId: getCard
+      summary: 합의 카드
+      description: '열린 방: 내 응답을 낸 참여자에게 중간 카드를, 응답 완료 1명이면 stage none을 돌려줘요. 응답 전이면 403 response_required예요. 마감된 방: 확인된 사용자 누구에게나 최종 카드를 읽기 전용으로 돌려줘요(DEC-013). 카드 없이 마감된 방은 stage none이에요. 카드에는 선택지별 수만 있고
+        닉네임·사용자 ID는 없어요.'
+      x-corthex:
+        id: API-009
+        spec:
+        - SPEC-013
+        - SPEC-019
+        - SPEC-021
+        tables:
+        - TBL-005
+        - TBL-006
+        - TBL-007
+        - TBL-008
+        - TBL-009
+        omit:
+          '400': 형식이 틀린 방 코드도 404예요(C-5)
+          '409': 읽기만 해요
+          '429': 읽기 요청은 C-6 한도에 세지 않아요
+        cases:
+          access: 열린 방에서 응답 전 403, 마감 뒤 누구나
+          exposure: 수만, 이름 없음(DEC-004)
+          empty: 응답 완료 1명·카드 없이 마감은 stage none
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RoomCode'
+      responses:
+        '200':
+          description: 카드(없으면 stage none)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Card'
+              examples:
+                interim:
+                  summary: 응답 완료 3명 중간 카드
+                  value:
+                    stage: interim
+                    basedOnCount: 3
+                    partySize: 4
+                    items:
+                    - position: 1
+                      prompt: 도착 첫날 저녁은?
+                      optionA: 맛집 줄 서기
+                      optionB: 숙소 근처 아무 데나
+                      category: split
+                      countA: 2
+                      countB: 1
+                      countNone: 0
+                      text: 첫날 저녁만 정하고 나머지는 그날 기분대로 가요
+                    - position: 2
+                      prompt: 일정은 얼마나 짤까?
+                      optionA: 시간 단위로
+                      optionB: 큰 틀만
+                      category: agreed
+                      countA: 0
+                      countB: 1
+                      countNone: 2
+                      text: 큰 틀만 정하고 가요
+                    - position: 3
+                      prompt: 숙소는?
+                      optionA: 위치가 먼저
+                      optionB: 가격이 먼저
+                      category: agreed
+                      countA: 2
+                      countB: 0
+                      countNone: 1
+                      text: 위치 좋은 숙소로 골라요
+                    - position: 4
+                      prompt: 이동은?
+                      optionA: 렌터카
+                      optionB: 대중교통
+                      category: agreed
+                      countA: 2
+                      countB: 0
+                      countNone: 1
+                      text: 렌터카를 빌려요
+                    - position: 5
+                      prompt: 아침은?
+                      optionA: 일찍 나가기
+                      optionB: 느긋하게
+                      category: split
+                      countA: 1
+                      countB: 1
+                      countNone: 1
+                      text: 아침 일찍 나갈 날을 하루만 정해요
+                    - position: 6
+                      prompt: 기념품은?
+                      optionA: 챙겨 사기
+                      optionB: 안 사도 됨
+                      category: open
+                      countA: 0
+                      countB: 0
+                      countNone: 3
+                      text: 누구나 괜찮아요
+                    - position: 7
+                      prompt: 비가 오면?
+                      optionA: 실내 계획으로
+                      optionB: 그래도 나가기
+                      category: agreed
+                      countA: 2
+                      countB: 0
+                      countNone: 1
+                      text: 비 오면 실내 계획으로 바꿔요
+                    - position: 8
+                      prompt: 돈 관리는?
+                      optionA: 공동 지갑
+                      optionB: 각자 계산
+                      category: agreed
+                      countA: 2
+                      countB: 0
+                      countNone: 1
+                      text: 공동 지갑을 만들어요
+                    nextAction: 첫날 저녁만 정하고 나머지는 그날 기분대로 가요
+                    finalizedAt: null
+                    asOf: '2026-11-28T09:30:00Z'
+                final:
+                  summary: 최종 카드
+                  value:
+                    stage: final
+                    basedOnCount: 4
+                    partySize: 4
+                    items:
+                    - position: 1
+                      prompt: 도착 첫날 저녁은?
+                      optionA: 맛집 줄 서기
+                      optionB: 숙소 근처 아무 데나
+                      category: split
+                      countA: 2
+                      countB: 2
+                      countNone: 0
+                      text: 첫날 저녁만 정하고 나머지는 그날 기분대로 가요
+                    - position: 2
+                      prompt: 일정은 얼마나 짤까?
+                      optionA: 시간 단위로
+                      optionB: 큰 틀만
+                      category: agreed
+                      countA: 0
+                      countB: 3
+                      countNone: 1
+                      text: 큰 틀만 정하고 가요
+                    - position: 3
+                      prompt: 숙소는?
+                      optionA: 위치가 먼저
+                      optionB: 가격이 먼저
+                      category: agreed
+                      countA: 4
+                      countB: 0
+                      countNone: 0
+                      text: 위치 좋은 숙소로 골라요
+                    - position: 4
+                      prompt: 이동은?
+                      optionA: 렌터카
+                      optionB: 대중교통
+                      category: agreed
+                      countA: 3
+                      countB: 0
+                      countNone: 1
+                      text: 렌터카를 빌려요
+                    - position: 5
+                      prompt: 아침은?
+                      optionA: 일찍 나가기
+                      optionB: 느긋하게
+                      category: split
+                      countA: 1
+                      countB: 3
+                      countNone: 0
+                      text: 아침 일찍 나갈 날을 하루만 정해요
+                    - position: 6
+                      prompt: 기념품은?
+                      optionA: 챙겨 사기
+                      optionB: 안 사도 됨
+                      category: open
+                      countA: 0
+                      countB: 0
+                      countNone: 4
+                      text: 누구나 괜찮아요
+                    - position: 7
+                      prompt: 비가 오면?
+                      optionA: 실내 계획으로
+                      optionB: 그래도 나가기
+                      category: agreed
+                      countA: 2
+                      countB: 0
+                      countNone: 2
+                      text: 비 오면 실내 계획으로 바꿔요
+                    - position: 8
+                      prompt: 돈 관리는?
+                      optionA: 공동 지갑
+                      optionB: 각자 계산
+                      category: agreed
+                      countA: 4
+                      countB: 0
+                      countNone: 0
+                      text: 공동 지갑을 만들어요
+                    nextAction: 첫날 저녁만 정하고 나머지는 그날 기분대로 가요
+                    finalizedAt: '2026-11-28T09:12:00Z'
+                    asOf: '2026-11-28T09:30:00Z'
+                one-response:
+                  summary: 응답 완료 1명
+                  value:
+                    stage: none
+                    basedOnCount: 1
+                    partySize: 4
+                    items: []
+                    nextAction: null
+                    finalizedAt: null
+                    asOf: '2026-11-28T09:30:00Z'
+                closed-without-card:
+                  summary: 카드 없이 마감된 방
+                  value:
+                    stage: none
+                    basedOnCount: 1
+                    partySize: 4
+                    items: []
+                    nextAction: null
+                    finalizedAt: null
+                    asOf: '2026-11-28T09:30:00Z'
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+                not-participant:
+                  $ref: '#/components/examples/not-participant'
+                response-required:
+                  $ref: '#/components/examples/response-required'
+        '404':
+          description: 방이 없음. 형식이 틀린 코드·만료로 지워진 방도 같은 응답(C-5)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-not-found:
+                  $ref: '#/components/examples/room-not-found'
+                room-code-wrong-format:
+                  $ref: '#/components/examples/room-code-wrong-format'
+                room-expired:
+                  $ref: '#/components/examples/room-expired'
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/rooms/{roomCode}/close:
+    post:
+      operationId: closeRoom
+      summary: 방장이 일찍 마감
+      description: 응답 완료가 2명 이상이면 한 batch에서 방을 마감하고 최종 카드를 확정하고 지난 카드 요약을 남기고 알림 신청을 지워요. 이미 마감된 방이면 바꾸지 않고 200과 그 카드예요.
+      x-corthex:
+        id: API-010
+        spec:
+        - SPEC-016
+        - SPEC-015
+        - SPEC-026
+        tables:
+        - TBL-006
+        - TBL-007
+        - TBL-009
+        - TBL-010
+        - TBL-011
+        - TBL-013
+        - TBL-014
+        omit: {}
+        cases:
+          concurrency: 자동 마감과 겹치면 먼저 커밋한 쪽 하나, 뒤의 요청은 already-closed 200
+          repeats: 같은 Idempotency-Key면 첫 응답
+          states: 2명 미만 409
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RoomCode'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: 마감됨(이미 마감됐던 경우 포함)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloseResult'
+              examples:
+                closed-now:
+                  summary: 응답 2명으로 마감
+                  value:
+                    roomStatus: closed
+                    closeReason: host_closed
+                    card:
+                      stage: final
+                      basedOnCount: 2
+                      partySize: 4
+                      items:
+                      - position: 1
+                        prompt: 도착 첫날 저녁은?
+                        optionA: 맛집 줄 서기
+                        optionB: 숙소 근처 아무 데나
+                        category: split
+                        countA: 2
+                        countB: 2
+                        countNone: 0
+                        text: 첫날 저녁만 정하고 나머지는 그날 기분대로 가요
+                      - position: 2
+                        prompt: 일정은 얼마나 짤까?
+                        optionA: 시간 단위로
+                        optionB: 큰 틀만
+                        category: agreed
+                        countA: 0
+                        countB: 3
+                        countNone: 1
+                        text: 큰 틀만 정하고 가요
+                      - position: 3
+                        prompt: 숙소는?
+                        optionA: 위치가 먼저
+                        optionB: 가격이 먼저
+                        category: agreed
+                        countA: 4
+                        countB: 0
+                        countNone: 0
+                        text: 위치 좋은 숙소로 골라요
+                      - position: 4
+                        prompt: 이동은?
+                        optionA: 렌터카
+                        optionB: 대중교통
+                        category: agreed
+                        countA: 3
+                        countB: 0
+                        countNone: 1
+                        text: 렌터카를 빌려요
+                      - position: 5
+                        prompt: 아침은?
+                        optionA: 일찍 나가기
+                        optionB: 느긋하게
+                        category: split
+                        countA: 1
+                        countB: 3
+                        countNone: 0
+                        text: 아침 일찍 나갈 날을 하루만 정해요
+                      - position: 6
+                        prompt: 기념품은?
+                        optionA: 챙겨 사기
+                        optionB: 안 사도 됨
+                        category: open
+                        countA: 0
+                        countB: 0
+                        countNone: 4
+                        text: 누구나 괜찮아요
+                      - position: 7
+                        prompt: 비가 오면?
+                        optionA: 실내 계획으로
+                        optionB: 그래도 나가기
+                        category: agreed
+                        countA: 2
+                        countB: 0
+                        countNone: 2
+                        text: 비 오면 실내 계획으로 바꿔요
+                      - position: 8
+                        prompt: 돈 관리는?
+                        optionA: 공동 지갑
+                        optionB: 각자 계산
+                        category: agreed
+                        countA: 4
+                        countB: 0
+                        countNone: 0
+                        text: 공동 지갑을 만들어요
+                      nextAction: 첫날 저녁만 정하고 나머지는 그날 기분대로 가요
+                      finalizedAt: '2026-11-28T09:12:00Z'
+                      asOf: '2026-11-28T09:30:00Z'
+                already-closed:
+                  summary: 인원이 다 답해 이미 마감
+                  value:
+                    roomStatus: closed
+                    closeReason: all_submitted
+                    card:
+                      stage: final
+                      basedOnCount: 4
+                      partySize: 4
+                      items:
+                      - position: 1
+                        prompt: 도착 첫날 저녁은?
+                        optionA: 맛집 줄 서기
+                        optionB: 숙소 근처 아무 데나
+                        category: split
+                        countA: 2
+                        countB: 2
+                        countNone: 0
+                        text: 첫날 저녁만 정하고 나머지는 그날 기분대로 가요
+                      - position: 2
+                        prompt: 일정은 얼마나 짤까?
+                        optionA: 시간 단위로
+                        optionB: 큰 틀만
+                        category: agreed
+                        countA: 0
+                        countB: 3
+                        countNone: 1
+                        text: 큰 틀만 정하고 가요
+                      - position: 3
+                        prompt: 숙소는?
+                        optionA: 위치가 먼저
+                        optionB: 가격이 먼저
+                        category: agreed
+                        countA: 4
+                        countB: 0
+                        countNone: 0
+                        text: 위치 좋은 숙소로 골라요
+                      - position: 4
+                        prompt: 이동은?
+                        optionA: 렌터카
+                        optionB: 대중교통
+                        category: agreed
+                        countA: 3
+                        countB: 0
+                        countNone: 1
+                        text: 렌터카를 빌려요
+                      - position: 5
+                        prompt: 아침은?
+                        optionA: 일찍 나가기
+                        optionB: 느긋하게
+                        category: split
+                        countA: 1
+                        countB: 3
+                        countNone: 0
+                        text: 아침 일찍 나갈 날을 하루만 정해요
+                      - position: 6
+                        prompt: 기념품은?
+                        optionA: 챙겨 사기
+                        optionB: 안 사도 됨
+                        category: open
+                        countA: 0
+                        countB: 0
+                        countNone: 4
+                        text: 누구나 괜찮아요
+                      - position: 7
+                        prompt: 비가 오면?
+                        optionA: 실내 계획으로
+                        optionB: 그래도 나가기
+                        category: agreed
+                        countA: 2
+                        countB: 0
+                        countNone: 2
+                        text: 비 오면 실내 계획으로 바꿔요
+                      - position: 8
+                        prompt: 돈 관리는?
+                        optionA: 공동 지갑
+                        optionB: 각자 계산
+                        category: agreed
+                        countA: 4
+                        countB: 0
+                        countNone: 0
+                        text: 공동 지갑을 만들어요
+                      nextAction: 첫날 저녁만 정하고 나머지는 그날 기분대로 가요
+                      finalizedAt: '2026-11-28T09:12:00Z'
+                      asOf: '2026-11-28T09:30:00Z'
+        '400':
+          description: 요청 형식이나 입력 값이 틀림. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                missing-idempotency-key:
+                  $ref: '#/components/examples/missing-idempotency-key'
+                not-json:
+                  $ref: '#/components/examples/not-json'
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                not-host:
+                  summary: 방장이 아닌 참여자
+                  value:
+                    type: about:blank
+                    title: 방장만 마감할 수 있어요
+                    status: 403
+                    code: not_host
+                    traceId: 81d7c1964a6abc3b
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        '404':
+          description: 방이 없음. 형식이 틀린 코드·만료로 지워진 방도 같은 응답(C-5)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-not-found:
+                  $ref: '#/components/examples/room-not-found'
+                room-code-wrong-format:
+                  $ref: '#/components/examples/room-code-wrong-format'
+                room-expired:
+                  $ref: '#/components/examples/room-expired'
+        '409':
+          description: 마감하지 않음. 방은 열린 그대로
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                not-enough:
+                  summary: 응답 완료 1명
+                  value:
+                    type: about:blank
+                    title: 2명 이상이 답해야 마감할 수 있어요
+                    status: 409
+                    code: not_enough_responses
+                    traceId: 21e74a6f043d52c6
+                idempotency-conflict:
+                  $ref: '#/components/examples/idempotency-conflict'
+        '429':
+          description: 요청 한도를 넘음. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                write-limit:
+                  $ref: '#/components/examples/write-limit'
+          headers:
+            Retry-After:
+              description: 다시 보내도 되는 때까지 남은 초
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+              example: 30
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/rooms/{roomCode}/notification-subscription:
+    post:
+      operationId: subscribeNotification
+      summary: 알림 신청
+      description: 화면이 먼저 `Notification.requestAgreement`(templateCode는 콘솔 기능성 캠페인의 발송 코드, 토스 앱 5.255.0 이상)로 동의를 받고, 결과가 `newAgreement`나 `alreadyAgreed`일 때만 새 인증 코드와 함께 이 API를 불러요(F-7, DEC-020). 서버는 코드를
+        교환해 받은 식별키의 HMAC이 세션 사용자의 key_hash와 같은지 본 뒤에만 식별키를 AES-256-GCM으로 암호화해 신청을 저장해요(TBL-011, DEC-019). 다르면 아무것도 쓰지 않고 403 identity_mismatch예요. 이미 신청했으면 200이에요.
+      x-corthex:
+        id: API-011
+        spec:
+        - SPEC-024
+        - SPEC-026
+        tables:
+        - TBL-001
+        - TBL-007
+        - TBL-008
+        - TBL-011
+        - TBL-013
+        - TBL-014
+        omit: {}
+        cases:
+          access: 응답 전 403 response_required, 다른 사람 식별키 403 identity_mismatch(쓰기 전 확인)
+          states: 마감 409
+          repeats: 두 번 신청해도 하나(200)
+          outside: 교환 실패 503, 코드 무효 400
+          exposure: 암호문·식별키를 응답에 넣지 않음
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/RoomCode'
+      - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionRequest'
+            examples:
+              code:
+                summary: 새 인증 코드
+                value:
+                  authCode: f0e1d2c3b4a5968778695a4b3c2d1e0f
+      responses:
+        '200':
+          description: 이미 신청함. 바뀐 것이 없음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResult'
+              examples:
+                already:
+                  summary: 같은 방에 두 번째 신청
+                  value:
+                    subscribed: true
+        '201':
+          description: 알림 신청됨
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionResult'
+              examples:
+                subscribed:
+                  summary: 신청 1개 생김
+                  value:
+                    subscribed: true
+        '400':
+          description: 요청 형식이나 입력 값이 틀림. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                auth-code-invalid:
+                  summary: 만료·재사용된 인증 코드(토스 4011)
+                  value:
+                    type: about:blank
+                    title: 알림을 신청하지 못했어요
+                    status: 400
+                    code: auth_code_invalid
+                    traceId: 19b995b9fe62a764
+                missing-idempotency-key:
+                  $ref: '#/components/examples/missing-idempotency-key'
+                not-json:
+                  $ref: '#/components/examples/not-json'
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                identity-mismatch:
+                  summary: 교환한 식별키가 세션 사용자와 다름
+                  value:
+                    type: about:blank
+                    title: 알림을 신청하지 못했어요
+                    status: 403
+                    code: identity_mismatch
+                    traceId: 60292463a8528605
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+                not-participant:
+                  $ref: '#/components/examples/not-participant'
+                response-required:
+                  $ref: '#/components/examples/response-required'
+        '404':
+          description: 방이 없음. 형식이 틀린 코드·만료로 지워진 방도 같은 응답(C-5)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-not-found:
+                  $ref: '#/components/examples/room-not-found'
+                room-code-wrong-format:
+                  $ref: '#/components/examples/room-code-wrong-format'
+                room-expired:
+                  $ref: '#/components/examples/room-expired'
+        '409':
+          description: 신청하지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                room-closed:
+                  $ref: '#/components/examples/room-closed'
+                idempotency-conflict:
+                  $ref: '#/components/examples/idempotency-conflict'
+        '429':
+          description: 한도를 넘어 교환·저장하지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                toss-user-limit:
+                  summary: 토스 API 사용자당 분당 20건 초과
+                  value:
+                    type: about:blank
+                    title: 잠시 뒤 다시 해 주세요
+                    status: 429
+                    code: rate_limited
+                    traceId: 9102f2ea1735ed17
+                write-limit:
+                  $ref: '#/components/examples/write-limit'
+          headers:
+            Retry-After:
+              description: 다시 보내도 되는 때까지 남은 초
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+              example: 30
+        '503':
+          description: 토스 API 오류·시간 초과(5초). 신청은 생기지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                toss-down:
+                  summary: 교환 API 시간 초과
+                  value:
+                    type: about:blank
+                    title: 알림을 신청하지 못했어요
+                    status: 503
+                    code: toss_unavailable
+                    traceId: e7c991e3c0d51aa0
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/me/rooms:
+    get:
+      operationId: listMyRooms
+      summary: 내 방 목록
+      description: '내가 참여 중인 열린 방을 최근 입장 순으로 20개까지 돌려줘요(TERM-046). 화면에는 방 코드를 보이지 않고, roomCode는 방 API를 부르는 데만 써요(DEC-021). Open: SPEC-039 [노출]의 "방 코드 없음"을 화면 기준으로 읽은 것은 06 체크포인트 질문 3이에요.'
+      x-corthex:
+        id: API-012
+        spec:
+        - SPEC-039
+        tables:
+        - TBL-006
+        - TBL-007
+        - TBL-008
+        omit:
+          '400': 입력이 없어요
+          '404': 경로가 자원을 가리키지 않아요
+          '409': 읽기만 해요
+          '429': 읽기 요청은 C-6 한도에 세지 않아요
+        cases:
+          access: 내가 참여자인 방만
+          empty: 'rooms: []'
+          limits: 최대 20개
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 열린 방 목록. 비어 있을 수 있음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyRoomList'
+              examples:
+                two-rooms:
+                  summary: 열린 방 2개
+                  value:
+                    rooms:
+                    - roomCode: ABCDEFGH23
+                      gatheringName: 제주 3박
+                      theme:
+                        themeId: travel
+                        name: 여행
+                      partySize: 4
+                      submittedCount: 3
+                      myRole: host
+                      mySubmitted: true
+                    - roomCode: KMNPQRST45
+                      gatheringName: 금요 회식
+                      theme:
+                        themeId: dinner
+                        name: 회식·저녁
+                      partySize: 6
+                      submittedCount: 1
+                      myRole: member
+                      mySubmitted: false
+                    asOf: '2026-11-28T09:30:00Z'
+                empty:
+                  summary: 참여 중인 열린 방 없음
+                  value:
+                    rooms: []
+                    asOf: '2026-11-28T09:30:00Z'
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/me/past-cards:
+    get:
+      operationId: listPastCards
+      summary: 지난 카드 목록
+      description: 내가 응답한 방의 최종 카드 요약을 확정 시각 최근 순으로 20개씩 돌려줘요. 방이 만료돼도 남아요. 닉네임·방 코드는 없어요.
+      x-corthex:
+        id: API-013
+        spec:
+        - SPEC-027
+        tables:
+        - TBL-010
+        omit:
+          '404': 경로가 자원을 가리키지 않아요
+          '409': 읽기만 해요
+          '429': 읽기 요청은 C-6 한도에 세지 않아요
+        cases:
+          empty: 'pastCards: []'
+          limits: 한 번에 20개
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: cursor
+        in: query
+        required: false
+        description: 앞 쪽 응답의 nextCursor. 처음에는 보내지 않아요
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 64
+          pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: 지난 카드. 비어 있을 수 있음
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PastCardPage'
+              examples:
+                one-page:
+                  summary: 요약 1개, 다음 쪽 없음
+                  value:
+                    pastCards:
+                    - pastCardId: 41
+                      gatheringName: 제주 3박
+                      themeName: 여행
+                      basedOnCount: 4
+                      items:
+                      - position: 1
+                        prompt: 도착 첫날 저녁은?
+                        optionA: 맛집 줄 서기
+                        optionB: 숙소 근처 아무 데나
+                        category: split
+                        countA: 2
+                        countB: 2
+                        countNone: 0
+                        text: 첫날 저녁만 정하고 나머지는 그날 기분대로 가요
+                      - position: 2
+                        prompt: 일정은 얼마나 짤까?
+                        optionA: 시간 단위로
+                        optionB: 큰 틀만
+                        category: agreed
+                        countA: 0
+                        countB: 3
+                        countNone: 1
+                        text: 큰 틀만 정하고 가요
+                      - position: 3
+                        prompt: 숙소는?
+                        optionA: 위치가 먼저
+                        optionB: 가격이 먼저
+                        category: agreed
+                        countA: 4
+                        countB: 0
+                        countNone: 0
+                        text: 위치 좋은 숙소로 골라요
+                      - position: 4
+                        prompt: 이동은?
+                        optionA: 렌터카
+                        optionB: 대중교통
+                        category: agreed
+                        countA: 3
+                        countB: 0
+                        countNone: 1
+                        text: 렌터카를 빌려요
+                      - position: 5
+                        prompt: 아침은?
+                        optionA: 일찍 나가기
+                        optionB: 느긋하게
+                        category: split
+                        countA: 1
+                        countB: 3
+                        countNone: 0
+                        text: 아침 일찍 나갈 날을 하루만 정해요
+                      - position: 6
+                        prompt: 기념품은?
+                        optionA: 챙겨 사기
+                        optionB: 안 사도 됨
+                        category: open
+                        countA: 0
+                        countB: 0
+                        countNone: 4
+                        text: 누구나 괜찮아요
+                      - position: 7
+                        prompt: 비가 오면?
+                        optionA: 실내 계획으로
+                        optionB: 그래도 나가기
+                        category: agreed
+                        countA: 2
+                        countB: 0
+                        countNone: 2
+                        text: 비 오면 실내 계획으로 바꿔요
+                      - position: 8
+                        prompt: 돈 관리는?
+                        optionA: 공동 지갑
+                        optionB: 각자 계산
+                        category: agreed
+                        countA: 4
+                        countB: 0
+                        countNone: 0
+                        text: 공동 지갑을 만들어요
+                      nextAction: 첫날 저녁만 정하고 나머지는 그날 기분대로 가요
+                      finalizedAt: '2026-11-28T09:12:00Z'
+                    nextCursor: null
+                empty:
+                  summary: 아직 없음
+                  value:
+                    pastCards: []
+                    nextCursor: null
+        '400':
+          description: cursor가 틀림
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                bad-cursor:
+                  summary: 알 수 없는 cursor
+                  value:
+                    type: about:blank
+                    title: 칸 옆의 안내를 확인해 주세요
+                    status: 400
+                    code: validation_failed
+                    traceId: 5e463411ea19686c
+                    errors:
+                    - field: cursor
+                      reason: invalid_format
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/me/data-summary:
+    get:
+      operationId: getMyDataSummary
+      summary: 내 데이터 현황
+      description: 지우기 전에 지워지는 것과 남는 것을 수로 돌려줘요(TERM-042). 다른 참여자 정보는 없어요.
+      x-corthex:
+        id: API-014
+        spec:
+        - SPEC-028
+        tables:
+        - TBL-007
+        - TBL-008
+        - TBL-009
+        - TBL-010
+        - TBL-011
+        omit:
+          '400': 입력이 없어요
+          '404': 경로가 자원을 가리키지 않아요
+          '409': 읽기만 해요
+          '429': 읽기 요청은 C-6 한도에 세지 않아요
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 현황
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSummary'
+              examples:
+                host-of-open-room:
+                  summary: 방장인 열린 방 1개
+                  value:
+                    responseCount: 2
+                    nicknameCount: 3
+                    notificationSubscriptionCount: 1
+                    pastCardCount: 1
+                    openHostedRoomCount: 1
+                    retainedFinalCardCount: 1
+                nothing:
+                  summary: 지울 것이 사용자 ID뿐
+                  value:
+                    responseCount: 0
+                    nicknameCount: 0
+                    notificationSubscriptionCount: 0
+                    pastCardCount: 0
+                    openHostedRoomCount: 0
+                    retainedFinalCardCount: 0
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/me:
+    delete:
+      operationId: deleteMyData
+      summary: 내 데이터 지우기
+      description: '한 D1 batch에서: 내가 방장인 열린 방은 마감하고 방장 응답을 뺀 응답으로 최종 카드를 확정해요(2명 미만이면 카드 없이 마감, close_reason host_deleted). 참여자로 있는 열린 방은 내 응답을 빼고 계수를 줄이고 중간 카드를 다시 계산하거나 없애요. 그다음 세션에 revoked_at을 적고, 응답·참여자(닉네임)·알림
+        신청·지난 카드·요청 ID 기록·한도 계수·사용자를 지워요. 확정된 최종 카드는 그대로예요. 실패하면 batch 전체가 되돌려져요. 지운 뒤 같은 세션 토큰으로 다시 부르면 204예요(TBL-002).'
+      x-corthex:
+        id: API-015
+        spec:
+        - SPEC-029
+        - SPEC-026
+        - SPEC-014
+        - SPEC-015
+        tables:
+        - TBL-001
+        - TBL-002
+        - TBL-006
+        - TBL-007
+        - TBL-008
+        - TBL-009
+        - TBL-010
+        - TBL-011
+        - TBL-013
+        - TBL-014
+        omit:
+          '404': 경로가 지금 사용자를 가리키고, 이미 지운 사용자도 204예요
+          '409': 어떤 상태에서도 지울 수 있어요. 본문이 없어 같은 요청 ID의 다른 내용도 없어요
+        cases:
+          repeats: 이미 지웠으면 204
+          concurrency: 같은 방에 다른 응답이 오면 C-4
+          outside: 중간 실패는 500이고 지운 것 없음
+      security:
+      - bearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: 지웠음(이미 지운 경우 포함). 본문 없음
+        '400':
+          description: 요청 형식이나 입력 값이 틀림. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                missing-idempotency-key:
+                  $ref: '#/components/examples/missing-idempotency-key'
+                not-json:
+                  $ref: '#/components/examples/not-json'
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        '429':
+          description: 요청 한도를 넘음. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                write-limit:
+                  $ref: '#/components/examples/write-limit'
+          headers:
+            Retry-After:
+              description: 다시 보내도 되는 때까지 남은 초
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+              example: 30
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+  /v1/entries:
+    post:
+      operationId: recordEntry
+      summary: 유입 경로 기록
+      description: 미니앱 실행마다 한 번, 세션을 시작한 뒤 진입 때의 `referrer`가 `external_share`인지 보내요. 서버는 날짜·종류별 수만 늘려요(TBL-015). 사용자 식별값은 남기지 않아요.
+      x-corthex:
+        id: API-016
+        spec:
+        - SPEC-001
+        - SPEC-023
+        tables:
+        - TBL-015
+        - TBL-014
+        omit:
+          '404': 경로가 자원을 가리키지 않아요
+          '409': 수를 늘리기만 해 부딪히지 않아요
+      security:
+      - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntryRecord'
+            examples:
+              shared:
+                summary: 공유 링크로 진입
+                value:
+                  referrerKind: external_share
+              other:
+                summary: 그 밖의 진입
+                value:
+                  referrerKind: other
+      responses:
+        '204':
+          description: 기록됨. 본문 없음
+        '400':
+          description: referrerKind가 틀림
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                bad-kind:
+                  summary: 알 수 없는 값
+                  value:
+                    type: about:blank
+                    title: 칸 옆의 안내를 확인해 주세요
+                    status: 400
+                    code: validation_failed
+                    traceId: 4c93757f93623f95
+                    errors:
+                    - field: referrerKind
+                      reason: invalid_choice
+                not-json:
+                  $ref: '#/components/examples/not-json'
+        '401':
+          description: 세션 토큰이 없거나 끝남(C-1). 아무것도 읽거나 쓰지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                no-session:
+                  $ref: '#/components/examples/no-session'
+                session-expired:
+                  $ref: '#/components/examples/session-expired'
+        '403':
+          description: 이 호출자는 할 수 없음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                origin-not-allowed:
+                  $ref: '#/components/examples/origin-not-allowed'
+        '429':
+          description: 요청 한도를 넘음. 아무것도 바뀌지 않음
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                write-limit:
+                  $ref: '#/components/examples/write-limit'
+          headers:
+            Retry-After:
+              description: 다시 보내도 되는 때까지 남은 초
+              schema:
+                type: integer
+                minimum: 1
+                maximum: 86400
+              example: 30
+        default:
+          description: 그 밖의 오류(500 internal, 라우터의 404 route_not_found·405 method_not_allowed)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                server-error:
+                  $ref: '#/components/examples/server-error'
+                method-not-allowed:
+                  $ref: '#/components/examples/method-not-allowed'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: API-001의 sessionToken. 수명 12시간, D1에는 SHA-256 해시만(TBL-002)
+  parameters:
+    RoomCode:
+      name: roomCode
+      in: path
+      required: true
+      description: 방 코드. 형식이 틀려도 400이 아니라 없는 방과 같은 404예요(C-5, DEC-021). 그래서 여기에는 형식을 걸지 않아요. 바른 형식은 RoomCodeValue예요
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 64
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: 화면이 만든 요청 ID(UUID, TBL-013). 같은 사용자·같은 키면 24시간 동안 첫 결과를 다시 돌려줘요
+      schema:
+        type: string
+        minLength: 36
+        maxLength: 36
+        pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$
+  examples:
+    missing-idempotency-key:
+      summary: Idempotency-Key 헤더가 없음
+      value:
+        type: about:blank
+        title: 요청을 처리하지 못했어요. 다시 해 주세요
+        status: 400
+        code: invalid_request
+        traceId: 4084630a111fb6b9
+    not-json:
+      summary: 본문이 JSON이 아님
+      value:
+        type: about:blank
+        title: 요청을 처리하지 못했어요. 다시 해 주세요
+        status: 400
+        code: invalid_request
+        traceId: 117c39df22afd21b
+    no-session:
+      summary: 세션 토큰이 없음
+      value:
+        type: about:blank
+        title: 다시 확인이 필요해요
+        status: 401
+        code: unauthenticated
+        traceId: f7abe906176f8b21
+    session-expired:
+      summary: 세션 토큰이 12시간이 지나 끝남
+      value:
+        type: about:blank
+        title: 다시 확인이 필요해요
+        status: 401
+        code: unauthenticated
+        traceId: 0ab529841374011e
+    origin-not-allowed:
+      summary: 허용되지 않은 Origin
+      value:
+        type: about:blank
+        title: 지금은 쓸 수 없어요
+        status: 403
+        code: origin_not_allowed
+        traceId: 376df97e73f7bea5
+    room-not-found:
+      summary: 없는 방 코드
+      value:
+        type: about:blank
+        title: 이 방은 없거나 보관 기간이 지났어요
+        status: 404
+        code: room_not_found
+        traceId: 7ae57054ce8d7b6b
+    room-code-wrong-format:
+      summary: 형식이 틀린 방 코드도 같은 응답(C-5)
+      value:
+        type: about:blank
+        title: 이 방은 없거나 보관 기간이 지났어요
+        status: 404
+        code: room_not_found
+        traceId: 3bd964a27169a1e9
+    room-expired:
+      summary: 만료로 지워진 방
+      value:
+        type: about:blank
+        title: 이 방은 없거나 보관 기간이 지났어요
+        status: 404
+        code: room_not_found
+        traceId: dcfe83e8756c8359
+    write-limit:
+      summary: 쓰기 요청 사용자당 분당 60건 초과(C-6)
+      value:
+        type: about:blank
+        title: 잠시 뒤 다시 해 주세요
+        status: 429
+        code: rate_limited
+        traceId: 5b1fcecb526fb390
+    server-error:
+      summary: 예상하지 못한 서버 오류
+      value:
+        type: about:blank
+        title: 잠시 뒤 다시 해 주세요
+        status: 500
+        code: internal
+        traceId: 009e299cf8a41c91
+    method-not-allowed:
+      summary: 그 경로에 없는 메서드(Allow 헤더 유지)
+      value:
+        type: about:blank
+        title: 요청을 처리하지 못했어요
+        status: 405
+        code: method_not_allowed
+        traceId: cf986a3800138cb4
+    not-participant:
+      summary: 참여자가 아닌 사용자
+      value:
+        type: about:blank
+        title: 이 방에 먼저 들어와 주세요
+        status: 403
+        code: not_participant
+        traceId: f068dcc156dcabec
+    response-required:
+      summary: 열린 방에서 응답 전
+      value:
+        type: about:blank
+        title: 답하면 볼 수 있어요
+        status: 403
+        code: response_required
+        traceId: 0a99a1bf1fec68f8
+    room-closed:
+      summary: 방이 그사이 마감됨
+      value:
+        type: about:blank
+        title: 방이 그사이 마감됐어요
+        status: 409
+        code: room_closed
+        traceId: ac259da15d7c78b1
+    idempotency-conflict:
+      summary: 같은 요청 ID를 다른 본문으로 보냄
+      value:
+        type: about:blank
+        title: 요청을 처리하지 못했어요. 다시 해 주세요
+        status: 409
+        code: idempotency_conflict
+        traceId: 095f68814896e396
+  schemas:
+    Problem:
+      type: object
+      description: 모든 오류 응답의 모양(RFC 9457 Problem Details + code, traceId, errors)
+      required:
+      - type
+      - title
+      - status
+      - code
+      - traceId
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          description: 지금은 늘 about:blank
+        title:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: 사용자에게 보여 줄 문구(errors 목록의 message)
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+          description: 응답의 HTTP 상태와 늘 같음
+        detail:
+          type: string
+          maxLength: 200
+          description: 개발용 설명. 입력 값·스택·SQL·토스 응답 원문을 넣지 않음(C-2)
+        instance:
+          type: string
+          format: uri-reference
+        code:
+          type: string
+          enum:
+          - invalid_request
+          - validation_failed
+          - auth_code_invalid
+          - unauthenticated
+          - auth_failed
+          - origin_not_allowed
+          - not_participant
+          - response_required
+          - not_host
+          - identity_mismatch
+          - room_not_found
+          - route_not_found
+          - method_not_allowed
+          - room_closed
+          - room_full
+          - already_submitted
+          - not_enough_responses
+          - theme_unavailable
+          - idempotency_conflict
+          - rate_limited
+          - internal
+          - toss_unavailable
+        traceId:
+          type: string
+          pattern: ^[0-9a-f]{16}$
+          description: 서버 로그에 남긴 요청 ID
+        errors:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/FieldError'
+      additionalProperties: false
+    FieldError:
+      type: object
+      required:
+      - field
+      - reason
+      description: 칸별 이유. 보낸 값은 넣지 않아요
+      properties:
+        field:
+          type: string
+          enum:
+          - authCode
+          - themeId
+          - gatheringName
+          - partySize
+          - hostNickname
+          - nickname
+          - answers
+          - cursor
+          - referrerKind
+        reason:
+          type: string
+          enum:
+          - required
+          - too_long
+          - out_of_range
+          - not_integer
+          - banned_word
+          - control_character
+          - wrong_count
+          - unknown_question
+          - invalid_choice
+          - invalid_format
+        positions:
+          type: array
+          description: answers의 문제 문항 번호(남은 문항 포함)
+          maxItems: 8
+          items:
+            type: integer
+            minimum: 1
+            maximum: 8
+      additionalProperties: false
+    RoomCodeValue:
+      type: string
+      pattern: ^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10}$
+      description: rooms.code(TBL-006). 0·O·1·I·L을 뺀 31자에서 10자
+    ThemeRef:
+      type: object
+      required:
+      - themeId
+      - name
+      additionalProperties: false
+      properties:
+        themeId:
+          type: string
+          pattern: ^[a-z_]{1,20}$
+        name:
+          type: string
+          minLength: 1
+          maxLength: 20
+    Timestamp:
+      type: string
+      format: date-time
+      description: UTC(C-8)
+    SessionRequest:
+      type: object
+      required:
+      - authCode
+      additionalProperties: false
+      properties:
+        authCode:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^[\x21-\x7E]+$
+          description: User.createAnonymousKeyAuthCode()의 code. 300초 안에 한 번만
+    Session:
+      type: object
+      required:
+      - sessionToken
+      - expiresAt
+      additionalProperties: false
+      properties:
+        sessionToken:
+          type: string
+          pattern: ^[A-Za-z0-9_-]{43}$
+          description: 'Authorization: Bearer로 보내는 토큰. 기기 밖에 남기지 않음'
+        expiresAt:
+          $ref: '#/components/schemas/Timestamp'
+    ThemeList:
+      type: object
+      required:
+      - themes
+      additionalProperties: false
+      properties:
+        themes:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required:
+            - themeId
+            - name
+            - questionSetVersion
+            additionalProperties: false
+            properties:
+              themeId:
+                type: string
+                pattern: ^[a-z_]{1,20}$
+              name:
+                type: string
+                minLength: 1
+                maxLength: 20
+              questionSetVersion:
+                type: integer
+                minimum: 1
+    NewRoom:
+      type: object
+      required:
+      - themeId
+      - gatheringName
+      - partySize
+      - hostNickname
+      additionalProperties: false
+      properties:
+        themeId:
+          type: string
+          minLength: 1
+          maxLength: 20
+          pattern: ^[a-z_]{1,20}$
+          description: themes.id(TBL-003)
+        gatheringName:
+          type: string
+          minLength: 1
+          maxLength: 20
+          pattern: ^[^\x00-\x1F\x7F]+$
+          description: rooms.gathering_name. 앞뒤 공백을 지운 뒤 1~20자
+        partySize:
+          type: integer
+          minimum: 2
+          maximum: 8
+          description: rooms.party_size
+        hostNickname:
+          type: string
+          minLength: 1
+          maxLength: 10
+          pattern: ^[^\x00-\x1F\x7F]+$
+          description: participants.nickname. 앞뒤 공백을 지운 뒤 1~10자, 금칙어 없음(SPEC-008)
+    CreatedRoom:
+      type: object
+      required:
+      - roomCode
+      - gatheringName
+      - partySize
+      - theme
+      additionalProperties: false
+      properties:
+        roomCode:
+          $ref: '#/components/schemas/RoomCodeValue'
+        gatheringName:
+          type: string
+          minLength: 1
+          maxLength: 20
+        partySize:
+          type: integer
+          minimum: 2
+          maximum: 8
+        theme:
+          $ref: '#/components/schemas/ThemeRef'
+    RoomView:
+      type: object
+      required:
+      - roomCode
+      - gatheringName
+      - theme
+      - partySize
+      - submittedCount
+      - isFull
+      - status
+      - myRole
+      - mySubmitted
+      - asOf
+      additionalProperties: false
+      properties:
+        roomCode:
+          $ref: '#/components/schemas/RoomCodeValue'
+        gatheringName:
+          type: string
+          minLength: 1
+          maxLength: 20
+        theme:
+          $ref: '#/components/schemas/ThemeRef'
+        partySize:
+          type: integer
+          minimum: 2
+          maximum: 8
+        submittedCount:
+          type: integer
+          minimum: 0
+          maximum: 8
+          description: 응답 완료 수(TERM-013)
+        isFull:
+          type: boolean
+          description: 열린 방에 참여자가 8명인지
+        status:
+          type: string
+          enum:
+          - open
+          - closed
+        myRole:
+          type: string
+          enum:
+          - none
+          - member
+          - host
+        mySubmitted:
+          type: boolean
+        asOf:
+          $ref: '#/components/schemas/Timestamp'
+    JoinRequest:
+      type: object
+      required:
+      - nickname
+      additionalProperties: false
+      properties:
+        nickname:
+          type: string
+          minLength: 1
+          maxLength: 10
+          pattern: ^[^\x00-\x1F\x7F]+$
+          description: participants.nickname(SPEC-008)
+    JoinResult:
+      type: object
+      required:
+      - roomCode
+      - myRole
+      - mySubmitted
+      additionalProperties: false
+      properties:
+        roomCode:
+          $ref: '#/components/schemas/RoomCodeValue'
+        myRole:
+          type: string
+          enum:
+          - member
+          - host
+        mySubmitted:
+          type: boolean
+    QuestionView:
+      type: object
+      required:
+      - questionSetVersion
+      - questions
+      additionalProperties: false
+      properties:
+        questionSetVersion:
+          type: integer
+          minimum: 1
+        questions:
+          type: array
+          minItems: 8
+          maxItems: 8
+          items:
+            type: object
+            required:
+            - position
+            - prompt
+            - optionA
+            - optionB
+            additionalProperties: false
+            properties:
+              position:
+                type: integer
+                minimum: 1
+                maximum: 8
+              prompt:
+                type: string
+                minLength: 1
+                maxLength: 40
+              optionA:
+                type: string
+                minLength: 1
+                maxLength: 30
+              optionB:
+                type: string
+                minLength: 1
+                maxLength: 30
+    ResponseSubmission:
+      type: object
+      required:
+      - answers
+      additionalProperties: false
+      properties:
+        answers:
+          type: array
+          minItems: 1
+          maxItems: 8
+          description: 8개여야 저장돼요. 1~7개면 400 wrong_count와 남은 문항(positions)
+          items:
+            type: object
+            required:
+            - position
+            - choice
+            additionalProperties: false
+            properties:
+              position:
+                type: integer
+                minimum: 1
+                maximum: 8
+              choice:
+                type: string
+                enum:
+                - A
+                - B
+                - none
+                description: none = 상관없어요(TERM-011). 저장할 때 N
+    PersonalProfile:
+      type: object
+      required:
+      - summary
+      - axes
+      additionalProperties: false
+      properties:
+        summary:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: 한 줄 설명. 점수·유형 이름 없음
+        axes:
+          type: array
+          maxItems: 3
+          items:
+            type: object
+            required:
+            - axis
+            - band
+            additionalProperties: false
+            properties:
+              axis:
+                type: string
+                enum:
+                - plan_speed
+                - spending_priority
+                - schedule_change
+              band:
+                type: string
+                enum:
+                - low
+                - balanced
+                - high
+    SubmitResult:
+      type: object
+      required:
+      - roomStatus
+      - submittedCount
+      - partySize
+      - cardStage
+      - logConversion
+      - profile
+      additionalProperties: false
+      properties:
+        roomStatus:
+          type: string
+          enum:
+          - open
+          - closed
+        submittedCount:
+          type: integer
+          minimum: 1
+          maximum: 8
+        partySize:
+          type: integer
+          minimum: 2
+          maximum: 8
+        cardStage:
+          type: string
+          enum:
+          - none
+          - interim
+          - final
+        logConversion:
+          type: boolean
+          description: true면 화면이 대표 전환 이벤트를 한 번 기록(SPEC-018). 방마다 한 번만 true
+        profile:
+          $ref: '#/components/schemas/PersonalProfile'
+    CardItem:
+      type: object
+      required:
+      - position
+      - prompt
+      - optionA
+      - optionB
+      - category
+      - countA
+      - countB
+      - countNone
+      - text
+      additionalProperties: false
+      properties:
+        position:
+          type: integer
+          minimum: 1
+          maximum: 8
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 40
+        optionA:
+          type: string
+          minLength: 1
+          maxLength: 30
+        optionB:
+          type: string
+          minLength: 1
+          maxLength: 30
+        category:
+          type: string
+          enum:
+          - agreed
+          - split
+          - open
+          description: agreed 모두 좋아요, split 조율해요, open 누구나 괜찮아요
+        countA:
+          type: integer
+          minimum: 0
+          maximum: 8
+        countB:
+          type: integer
+          minimum: 0
+          maximum: 8
+        countNone:
+          type: integer
+          minimum: 0
+          maximum: 8
+        text:
+          type: string
+          minLength: 1
+          maxLength: 60
+          description: agreed는 확정 문구, split은 조율 제안 문구, open은 고정 문구
+    Card:
+      type: object
+      required:
+      - stage
+      - basedOnCount
+      - partySize
+      - items
+      - nextAction
+      - finalizedAt
+      - asOf
+      additionalProperties: false
+      properties:
+        stage:
+          type: string
+          enum:
+          - none
+          - interim
+          - final
+          description: none = 응답 완료 2명 미만이거나 카드 없이 마감
+        basedOnCount:
+          type: integer
+          minimum: 0
+          maximum: 8
+        partySize:
+          type: integer
+          minimum: 2
+          maximum: 8
+        items:
+          type: array
+          maxItems: 8
+          description: stage none이면 빈 목록, 그 밖에는 8개
+          items:
+            $ref: '#/components/schemas/CardItem'
+        nextAction:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 60
+        finalizedAt:
+          oneOf:
+          - $ref: '#/components/schemas/Timestamp'
+          - type: 'null'
+        asOf:
+          $ref: '#/components/schemas/Timestamp'
+    CloseResult:
+      type: object
+      required:
+      - roomStatus
+      - closeReason
+      - card
+      additionalProperties: false
+      properties:
+        roomStatus:
+          type: string
+          enum:
+          - closed
+        closeReason:
+          type: string
+          enum:
+          - all_submitted
+          - host_closed
+          - host_deleted
+        card:
+          $ref: '#/components/schemas/Card'
+    SubscriptionRequest:
+      type: object
+      required:
+      - authCode
+      additionalProperties: false
+      properties:
+        authCode:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^[\x21-\x7E]+$
+    SubscriptionResult:
+      type: object
+      required:
+      - subscribed
+      additionalProperties: false
+      properties:
+        subscribed:
+          type: boolean
+          enum:
+          - true
+    MyRoomList:
+      type: object
+      required:
+      - rooms
+      - asOf
+      additionalProperties: false
+      properties:
+        rooms:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required:
+            - roomCode
+            - gatheringName
+            - theme
+            - partySize
+            - submittedCount
+            - myRole
+            - mySubmitted
+            additionalProperties: false
+            properties:
+              roomCode:
+                $ref: '#/components/schemas/RoomCodeValue'
+              gatheringName:
+                type: string
+                minLength: 1
+                maxLength: 20
+              theme:
+                $ref: '#/components/schemas/ThemeRef'
+              partySize:
+                type: integer
+                minimum: 2
+                maximum: 8
+              submittedCount:
+                type: integer
+                minimum: 0
+                maximum: 8
+              myRole:
+                type: string
+                enum:
+                - member
+                - host
+              mySubmitted:
+                type: boolean
+        asOf:
+          $ref: '#/components/schemas/Timestamp'
+    PastCardPage:
+      type: object
+      required:
+      - pastCards
+      - nextCursor
+      additionalProperties: false
+      properties:
+        pastCards:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required:
+            - pastCardId
+            - gatheringName
+            - themeName
+            - basedOnCount
+            - items
+            - nextAction
+            - finalizedAt
+            additionalProperties: false
+            properties:
+              pastCardId:
+                type: integer
+                minimum: 1
+              gatheringName:
+                type: string
+                minLength: 1
+                maxLength: 20
+              themeName:
+                type: string
+                minLength: 1
+                maxLength: 20
+              basedOnCount:
+                type: integer
+                minimum: 2
+                maximum: 8
+              items:
+                type: array
+                minItems: 8
+                maxItems: 8
+                items:
+                  $ref: '#/components/schemas/CardItem'
+              nextAction:
+                type: string
+                minLength: 1
+                maxLength: 60
+              finalizedAt:
+                $ref: '#/components/schemas/Timestamp'
+        nextCursor:
+          type:
+          - string
+          - 'null'
+          maxLength: 64
+    DataSummary:
+      type: object
+      additionalProperties: false
+      required:
+      - responseCount
+      - nicknameCount
+      - notificationSubscriptionCount
+      - pastCardCount
+      - openHostedRoomCount
+      - retainedFinalCardCount
+      properties:
+        responseCount:
+          type: integer
+          minimum: 0
+          description: 지워지는 응답 수
+        nicknameCount:
+          type: integer
+          minimum: 0
+          description: 지워지는 닉네임(참여자 행) 수
+        notificationSubscriptionCount:
+          type: integer
+          minimum: 0
+          description: 지워지는 알림 신청 수
+        pastCardCount:
+          type: integer
+          minimum: 0
+          description: 지워지는 지난 카드 수
+        openHostedRoomCount:
+          type: integer
+          minimum: 0
+          description: 지우면 마감되는, 내가 방장인 열린 방 수
+        retainedFinalCardCount:
+          type: integer
+          minimum: 0
+          description: '남는 것: 내 응답이 들어간 확정된 최종 카드 수(이름 없는 수)'
+    EntryRecord:
+      type: object
+      required:
+      - referrerKind
+      additionalProperties: false
+      properties:
+        referrerKind:
+          type: string
+          enum:
+          - external_share
+          - other
+          description: referrer가 external_share면 external_share, 없거나 다르면 other
+  x-corthex:
+    errors:
+      invalid_request:
+        status: 400
+        meaning: 요청 형식이 틀렸어요(JSON이 아님, 요청 ID 헤더가 없거나 형식이 틀림)
+        message: 요청을 처리하지 못했어요. 다시 해 주세요
+        client: 앱 버그로 기록하고 [다시 시도]를 보여요
+      validation_failed:
+        status: 400
+        meaning: 입력 값이 한계 밖이에요. errors에 칸과 이유가 있어요
+        message: 칸 옆의 안내를 확인해 주세요
+        client: 적은 값을 지우지 않고 칸마다 이유를 보여요
+      auth_code_invalid:
+        status: 400
+        meaning: 알림 신청 때 보낸 인증 코드가 만료·재사용·위조됐어요(토스 4011)
+        message: 알림을 신청하지 못했어요
+        client: 새 인증 코드를 받아 한 번 다시 보내요
+      unauthenticated:
+        status: 401
+        meaning: 세션 토큰이 없거나 끝났거나 무효예요(C-1)
+        message: 다시 확인이 필요해요
+        client: FL-001의 확인 단계로 돌아가 API-001을 다시 불러요
+      auth_failed:
+        status: 401
+        meaning: '인증 코드를 확인하지 못했어요: 만료·재사용·위조, 토스 API 오류·시간 초과(SPEC-002)'
+        message: 확인하지 못했어요
+        client: '[다시 시도]·[닫기]를 보여요. 다시 시도는 새 인증 코드로 해요'
+      origin_not_allowed:
+        status: 403
+        meaning: 허용된 두 Origin 밖의 요청이에요(SPEC-038)
+        message: 지금은 쓸 수 없어요
+        client: 보여 줄 화면이 없어요(토스 앱 밖 요청)
+      not_participant:
+        status: 403
+        meaning: 이 방의 참여자가 아니에요
+        message: 이 방에 먼저 들어와 주세요
+        client: 방 소개(SPEC-006)로 보내요
+      response_required:
+        status: 403
+        meaning: 열린 방에서 내 응답을 내기 전이에요(SPEC-019, SPEC-024)
+        message: 답하면 볼 수 있어요
+        client: 문항 화면(SPEC-010)으로 보내요
+      not_host:
+        status: 403
+        meaning: 방장이 아니에요(SPEC-016)
+        message: 방장만 마감할 수 있어요
+        client: 마감 버튼을 감춰요
+      identity_mismatch:
+        status: 403
+        meaning: 알림 신청 때 교환한 식별키가 세션의 사용자와 달라요
+        message: 알림을 신청하지 못했어요
+        client: API-001로 다시 확인한 뒤 신청을 다시 해요
+      room_not_found:
+        status: 404
+        meaning: 없는 방, 형식이 틀린 방 코드, 만료로 지워진 방이에요(C-5)
+        message: 이 방은 없거나 보관 기간이 지났어요
+        client: '[방 만들기]를 보여요'
+      route_not_found:
+        status: 404
+        meaning: 없는 경로예요(라우터 기본값을 이 모양으로 바꿈)
+        message: 요청을 처리하지 못했어요
+        client: 앱 버그로 기록해요
+      method_not_allowed:
+        status: 405
+        meaning: 그 경로에 없는 메서드예요(Allow 헤더를 유지)
+        message: 요청을 처리하지 못했어요
+        client: 앱 버그로 기록해요
+      room_closed:
+        status: 409
+        meaning: 방이 마감됐어요(입장·응답·알림 신청 거절)
+        message: 방이 그사이 마감됐어요
+        client: 최종 카드 읽기 전용 화면(SPEC-021)으로 보내요
+      room_full:
+        status: 409
+        meaning: 열린 방에 참여자가 8명이에요
+        message: 이 방은 8명이 다 찼어요
+        client: 입장 버튼을 막고 [방 만들기]를 보여요
+      already_submitted:
+        status: 409
+        meaning: 이미 응답을 냈어요. 저장된 응답은 그대로예요(SPEC-011)
+        message: 이미 답했어요
+        client: API-008로 내 결과를 불러와 보여요
+      not_enough_responses:
+        status: 409
+        meaning: 응답 완료가 2명 미만이라 마감할 수 없어요(SPEC-016)
+        message: 2명 이상이 답해야 마감할 수 있어요
+        client: 방은 열린 그대로 두고 안내를 보여요
+      theme_unavailable:
+        status: 409
+        meaning: 고른 테마에 배포된 문항 세트가 없어요(배포가 내려감, 없는 테마)
+        message: 이 테마는 지금 쓸 수 없어요
+        client: 테마 목록(API-002)을 다시 불러와요
+      idempotency_conflict:
+        status: 409
+        meaning: 같은 요청 ID를 다른 내용으로 보냈어요(DEC-021)
+        message: 요청을 처리하지 못했어요. 다시 해 주세요
+        client: 새 요청 ID로 다시 보내요
+      rate_limited:
+        status: 429
+        meaning: 요청 한도를 넘었어요(C-6, 토스 4095 포함). 바뀐 것이 없어요
+        message: 잠시 뒤 다시 해 주세요
+        client: Retry-After 초 뒤에 [다시 시도]를 켜요
+      internal:
+        status: 500
+        meaning: 서버의 예상하지 못한 오류예요. 바뀐 것이 없어요(D1 batch 되돌림)
+        message: 잠시 뒤 다시 해 주세요
+        client: 적은 값을 지우지 않고 [다시 시도]와 traceId를 보여요
+      toss_unavailable:
+        status: 503
+        meaning: 토스 파트너 API 오류·시간 초과(5초)예요(SPEC-024)
+        message: 알림을 신청하지 못했어요
+        client: '[다시 시도]를 보여요. 신청은 생기지 않았어요'
+    jobs:
+      expire-rooms:
+        spec:
+        - SPEC-030
+        - SPEC-026
+        tables:
+        - TBL-006
+        - TBL-011
+        - TBL-010
+        what: 매시간 Cron. expires_at이 지난 방을 500개씩 지워요(CASCADE로 참여자·응답·카드·알림 신청·발송 기록). 지난 카드는 남아요
+      send-notifications:
+        spec:
+        - SPEC-025
+        tables:
+        - TBL-011
+        - TBL-012
+        - TBL-014
+        what: API-007 커밋 뒤 ctx.waitUntil로 send-message를 불러요(x-anon-key, templateSetCode, context). 식별키당 분당 10건, 실패는 기록만
+      cleanup:
+        spec:
+        - SPEC-002
+        - SPEC-038
+        tables:
+        - TBL-002
+        - TBL-013
+        - TBL-014
+        what: 매시간 Cron. 끝난 세션, 24시간 지난 요청 ID 기록, 7일 지난 한도 계수를 지워요
+    outside-the-server:
+      SPEC-009: 화면만(토스 내비게이션 바)
+      SPEC-020: 화면만(File.saveBase64)
+      SPEC-022: 화면만(Share.createLink, Share.sendMessage). 방 코드는 API-004·API-012에서 받아요
+      SPEC-031: 저장소 스크립트(형식 검사)
+      SPEC-032: 저장소 스크립트(검토·배포가 TBL-003~005에 행을 넣음)
+      SPEC-033: 번들 안 화면
+      SPEC-034: 빌드 검사
+      SPEC-035: 빌드·화면 검사
+      SPEC-036: 12 QA 측정
+      SPEC-037: 09 목업·12 QA 측정
+    cross-cutting:
+      SPEC-038: '모든 operation: Origin 확인(403 origin_not_allowed), C-6 한도(429)'

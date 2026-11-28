@@ -15,6 +15,18 @@
       "source": "docs/01-domain/domain.md",
       "truth": "source",
       "note": "2026-11-27: 기본 human view는 Miro 보드지만, 이번 작업 지시가 저장소 밖 쓰기를 허용하지 않았고 보드 생성은 사용자 확인 사항이라 보드를 만들지 않았어요. 이벤트 스토밍 보드는 저장소 안 텍스트(board.md, Mermaid 포함)로 대신해요. 진행 방식은 one-pass draft(AI가 1~9단계를 한 번에 초안, 체크포인트 1번)예요. Miro로 옮길지는 사용자님이 정해요. 2026-11-27 Orca 항목 232: 사용자님이 체크포인트 질문에 'Nexus에 올려'라고 답해 NEXUS에서 보고 정하기로 했어요(DEC-002). NEXUS는 default branch를 그리므로 이 단계 초안은 병합·push 뒤에 보여요."
+    },
+    "05-erd": {
+      "human": "nexus",
+      "source": "db/schema.sql",
+      "truth": "source",
+      "note": "2026-11-28: on_nexus 프로젝트라 기본 human view인 NEXUS의 ERD 그림(db/schema.sql에서 그림)을 써요. ERD Editor 파일은 만들지 않았어요(D1·SQLite에서는 표 주석의 TBL ID와 CHECK 제약이 가져오기·내보내기에서 빠지기 때문). 마이그레이션은 db/migrations/에 있어요."
+    },
+    "06-api": {
+      "human": "nexus",
+      "source": "api/openapi.yaml",
+      "truth": "source",
+      "note": "2026-11-28: on_nexus 프로젝트라 기본 human view인 NEXUS의 operation 목록을 써요. 계약 보기는 Swagger UI나 Prism 목 서버(prism mock api/openapi.yaml)로 같은 파일을 열어요. 검사는 python3 scripts/check-contract.py예요."
     }
   }
 }

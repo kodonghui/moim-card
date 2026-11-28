@@ -1,5 +1,13 @@
 # 진행 기록
 
+### 2026-11-28 · 05 ERD와 06 API 계약 초안, F-1~F-7 확인
+
+- Done: 미확인 사실 F-1~F-7을 토스 공식 개발자센터 페이지 본문(`.md` 주소)으로 확인하고, 다르게 나온 사실에 걸린 04 행(SPEC-002, SPEC-018, SPEC-024, SPEC-025)과 C-5의 셈 오류만 고쳤어요(DEC-020, 근거 DEC-016). `corthex-contract`로 05 ERD([db/schema.sql](../../db/schema.sql), [0001_init.sql](../../db/migrations/0001_init.sql), [erd.md](../05-erd/erd.md), TBL-001~015)와 06 API 계약([api/openapi.yaml](../../api/openapi.yaml), [api.md](../06-api/api.md), API-001~016, 오류 코드 22개)을 썼어요. 검사 스크립트 [scripts/check-contract.py](../../scripts/check-contract.py)를 더했어요. 체크포인트 질문은 [checkpoint-05.md](../05-erd/checkpoint-05.md)(질문 1개)와 [checkpoint-06.md](../06-api/checkpoint-06.md)(질문 3개)에 있어요. `.corthex/project.json`에 05·06 단계 설정(human `nexus`, truth `source`)을, `.corthex/stages.json`에 05·06을 `in_progress`로 더했어요.
+- Why: 04 통과(DEC-014~019) 뒤 다음 단계예요. 토링이 작업 지시(2026-11-28, Orca 작업 task_4b47409b8128).
+- Result: F-7이 달랐어요: 알림 동의는 `Notification.requestAgreement`이고 토스 앱 5.255.0 이상이라 SPEC-001의 최소 버전(5.232.0)보다 높아요. 5.255.0 미만이면 [알림 받기]에서 업데이트를 안내해요. F-2는 SDK `Analytics.log`로만 남길 수 있어 서버가 전환 표시를 주고 화면이 기록해요. 계약을 쓰다 두 가지를 찾았어요: 마지막 응답으로 방이 마감되면 SPEC-026 문장대로는 알림이 가지 않아 REQ-058과 부딪힘(06 질문 2), SPEC-039의 "방 코드 없음"을 지키면 목록에서 방을 열 수 없음(06 질문 3). 두 질문 모두 01 도메인 설계를 바꾸지 않아요.
+- Checked: `python3 scripts/check-contract.py` 통과 1095·실패 0(마이그레이션이 빈 DB에서 schema.sql과 같은 스키마, TBL·API ID 차례, 제약 검사 25개, 응답 표, 예시 200개 스키마 검사, 오류 코드·상태, 요청 필드 한계, 열 한계 = 계약 한계, SPEC 39/39 연결, 쓰지 않는 테이블 0). openapi-spec-validator 유효. Prism 5.12.0 목 서버가 계약을 읽고 예시·`Prefer` 헤더·401을 계약대로 돌려줌. Schemathesis 4.34.4가 16개 operation에서 367건을 만들었고, 실패 21건은 목 서버 자체의 동작(아무 토큰이나 받음 15건, Prism 자체 JSON 오류 모양 6건)이었어요. hub snapshot(이 브랜치 사본)은 TBL 15·API 16을 읽고 연결 경고 0이었고, hub의 ERD 그림 읽기는 테이블 15개와 "테이블 없는 용어" 4개를 경고 없이 읽었어요. 실제 서버 계약 테스트는 11 개발 단계예요. F-1의 콘솔 인증서 발급은 사용자님 계정이라 확인하지 못했어요.
+- Next: 토링이가 05 질문 1, 06 질문 1~3 답을 받아 줌 → 답을 DEC-022부터 기록하고 Open 표시를 고침 → PR 병합(토링이) → `push moim-card` → 07 사이트맵.
+
 ### 2026-11-28 · 03 질문 2, 04 질문 3 답 기록과 변경 절차(01~04)
 
 - Done: 사용자님 답(Orca 항목 249, 이벤트 e4355)을 DEC-018(03 질문 2 "더해(추천)")과 DEC-019(04 질문 3 "암호화해 두고 방 끝나면 삭제(추천)")로 기록하고, 변경 절차대로 01부터 04까지 고쳤어요. 01: domain.md에 리드 모델 "내 방 목록"(TERM-046), CTX-004 식별키 예외, CTX-006 정책과 이벤트 "알림 신청 삭제됨", 응답 규칙의 마감 뒤 누구나 보기 예외(DEC-013), 다음 행동의 테마 기본 문구(REQ-020), 핫스팟 H-04~H-14와 "review in stage 02" 세 줄의 상태, 새 용어 TERM-043~045를 넣고 board.md도 맞췄어요. 02: REQ-083(Should)·REQ-084(Must)를 더하고 REQ-074 문장을 바꿨어요(승인 문장은 비고, 4.6절 변경 기록). 03: FL-016(열린 방으로 돌아가기)을 더하고 FL-001(홈)·FL-010(식별키 암호화·삭제)을 고쳤어요. 04: SPEC-039(내 방 목록)를 더하고 SPEC-024~026을 active로, SPEC-003·025·033과 C-7에 암호문을 적었어요. `.corthex/stages.json`에서 03·04를 `done`으로, 01·02·03·04에 체크포인트를 적었어요.
