@@ -88,3 +88,8 @@ div[role="alert"] h2 { font-size: var(--font-size-heading); margin: 0; }
 .choice-dot { width: var(--space-4); height: var(--space-4); flex: none; box-sizing: border-box; border-width: 1px; border-style: solid; border-color: var(--color-border-control); border-radius: var(--radius-pill); }
 .choice[aria-pressed="true"] { border-width: 2px; font-weight: var(--font-weight-bold); }
 .choice[aria-pressed="true"] .choice-dot { background: var(--color-accent-default); border-color: var(--color-accent-default); }
+.axis { display: flex; gap: var(--space-2); }
+.axis span { flex: 1; text-align: center; background: var(--color-bg-subtle); padding: var(--space-2); border-radius: var(--radius-chip); }
+.axis .axis-selected { background: var(--color-accent-subtle); color: var(--color-accent-on-subtle); }
+
+.profile-axis h2 { font-size: var(--font-size-small); margin: var(--space-2) 0; }

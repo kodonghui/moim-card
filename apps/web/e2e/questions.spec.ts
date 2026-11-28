@@ -8,6 +8,7 @@ async function enter(page: Page, conversion = false) {
   await page.route('**/v1/rooms/**', route => {
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
     if (route.request().method() === 'POST') return route.fulfill({ status: 201, headers: cors, json: { logConversion: conversion, roomStatus: 'open' } });
+    if (route.request().url().endsWith('/my-profile')) return route.fulfill({ headers: cors, json: { summary: '차근차근 정해요', axes: [{ axis: 'plan_speed', band: 'balanced' }] } });
     return route.fulfill({ headers: cors, json: route.request().url().endsWith('/questions') ? { questionSetVersion: 1, questions } : room });
   });
   await page.goto('/home'); await page.getByRole('button', { name: /제주 3박/ }).click();
