@@ -1,6 +1,7 @@
 import { problemResponse } from './app';
 import { hashToken } from './session';
 import { createTossClient } from './toss';
+import { identityHash } from './identity';
 
 export interface SessionEnv {
   DB: D1Database;
@@ -8,7 +9,6 @@ export interface SessionEnv {
   USER_HMAC_KEY: string;
 }
 
-const hex = (bytes: ArrayBuffer) => Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
 const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 function newId(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -37,8 +37,7 @@ export async function createSession(request: Request, env: SessionEnv, now = Mat
   console.log(JSON.stringify({event:'toss_api_minute', minute, calls:reservation.count}));
   const exchanged = await createTossClient(env.TOSS).exchange(body.authCode);
   if (!exchanged.ok) return exchanged.reason === 'rate_limited' ? problemResponse('rate_limited', undefined, {'Retry-After': '60'}) : problemResponse('auth_failed');
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.USER_HMAC_KEY), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
-  const keyHash = hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(exchanged.value)));
+  const keyHash = await identityHash(exchanged.value, env.USER_HMAC_KEY);
   const sessionToken = token();
   const tokenHash = await hashToken(sessionToken);
   await env.DB.batch([
