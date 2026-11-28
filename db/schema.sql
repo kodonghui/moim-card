@@ -116,12 +116,13 @@ CREATE TABLE rooms (
 CREATE INDEX rooms_expires ON rooms (expires_at);
 
 -- TBL-007 participants 참여자 (CTX-001) ← SPEC-005, SPEC-006, SPEC-007, SPEC-008, SPEC-010, SPEC-016, SPEC-017, SPEC-028, SPEC-029, SPEC-039 | terms: TERM-005, TERM-004, TERM-030, TERM-046
+-- 규칙: id는 AUTOINCREMENT로 재사용하지 않아요(DEC-049).
 -- 규칙: 한 사용자는 한 방에 한 번만 참여해요(room_id, user_id 유일). 방장(role = 'host')은 방마다 한 명이에요(부분 유일 인덱스).
 -- 규칙: 닉네임은 앞뒤 공백을 지운 1~10자예요(SPEC-008). 금칙어 검사는 서버 코드가 해요(TERM-045). 닉네임은 본인 화면에만 보여요.
 -- 규칙: 사용자가 데이터를 지우면 그 사람의 참여자 행이 지워지고(CASCADE), 방의 계수는 SPEC-029가 같은 트랜잭션에서 줄여요.
 -- 리드 모델 내 방 목록(TERM-046)은 내 참여자 행 중 열린 방을 joined_at 최근 순으로 20개까지예요(SPEC-039).
 CREATE TABLE participants (
-  id        INTEGER NOT NULL PRIMARY KEY,
+  id        INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
   room_id   INTEGER NOT NULL REFERENCES rooms (id) ON DELETE CASCADE,
   user_id   TEXT    NOT NULL REFERENCES users (id) ON DELETE CASCADE,
   role      TEXT    NOT NULL CHECK (role IN ('host', 'member')),
@@ -189,12 +190,13 @@ CREATE TABLE past_cards (
 CREATE INDEX past_cards_user_recent ON past_cards (user_id, finalized_at, id);
 
 -- TBL-011 notification_subscriptions 알림 신청 (CTX-006) ← SPEC-024, SPEC-025, SPEC-026, SPEC-028, SPEC-029, SPEC-030 | terms: TERM-035
+-- 규칙: id는 AUTOINCREMENT로 재사용하지 않아요(DEC-049).
 -- 규칙(DEC-019): 발송용 사용자 식별키(TERM-028)는 AES-256-GCM 암호문으로만 둬요. 신청마다 새 12바이트 nonce,
 --       키는 Workers 비밀 값이고 key_version으로 바꿀 수 있어요. 평문 열은 없어요.
 -- 규칙: 응답을 낸 참여자만 신청할 수 있어요(responses (participant_id, room_id) 복합 외래 키). 참여자마다 하나예요.
 -- 규칙(SPEC-026, REQ-084): 방 마감·만료·내 데이터 지우기와 같은 트랜잭션에서 지워요. 응답·참여자·방이 지워져도 CASCADE로 지워져요.
 CREATE TABLE notification_subscriptions (
-  id                  INTEGER NOT NULL PRIMARY KEY,
+  id                  INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
   participant_id      INTEGER NOT NULL UNIQUE,
   room_id             INTEGER NOT NULL,
   anon_key_ciphertext BLOB    NOT NULL CHECK (length(anon_key_ciphertext) BETWEEN 17 AND 512),

@@ -1,6 +1,6 @@
 # 모임 합의 카드(가칭): ERD (05)
 
-상태: **스키마 고정, 체크포인트 통과**(2026-11-28, DEC-022) · 변경: TBL-016 성향 문구를 더함(DEC-039, 변경 절차, 0002) · 원본: [db/schema.sql](../../db/schema.sql)(TBL-001~016) · 마이그레이션: [db/migrations/0001_init.sql](../../db/migrations/0001_init.sql), [0002_profile_phrases.sql](../../db/migrations/0002_profile_phrases.sql) · 체크포인트 질문: [checkpoint-05.md](checkpoint-05.md)
+상태: **스키마 고정, 체크포인트 통과**(2026-11-28, DEC-022) · 변경: TBL-016 성향 문구를 더함(DEC-039, 0002), 참여자·알림 신청 ID 재사용 방지(DEC-049, 0003) · 원본: [db/schema.sql](../../db/schema.sql)(TBL-001~016) · 마이그레이션: [db/migrations/0001_init.sql](../../db/migrations/0001_init.sql), [0002_profile_phrases.sql](../../db/migrations/0002_profile_phrases.sql), [0003_notification_identity_sequences.sql](../../db/migrations/0003_notification_identity_sequences.sql) · 체크포인트 질문: [checkpoint-05.md](checkpoint-05.md)
 
 - 입력: [04 기능 명세](../04-functional-spec/spec.md)(SPEC-001~039, DEC-016·020), [01 도메인 설계](../01-domain/domain.md)의 애그리거트 규칙과 용어집(TERM-001~046).
 - 데이터베이스: Cloudflare D1(SQLite)이에요. 테이블은 모두 `STRICT`이고, 외래 키는 D1이 기본으로 지켜요. 한 요청의 여러 쓰기는 D1 batch 하나(트랜잭션 하나)로 보내요(C-4).
@@ -168,7 +168,7 @@ erDiagram
 | # | 정한 것 | 이유 |
 | --- | --- | --- |
 | E-1 | 시각은 UTC Unix 초(INTEGER)로 둬요. | C-8, 비교·계산이 쉬움 |
-| E-2 | 사용자 ID는 무작위 128비트(26자), 방 ID는 `AUTOINCREMENT` 정수예요. | 지난 카드의 `room_ref`가 다시 쓰이지 않게 |
+| E-2 | 사용자 ID는 무작위 128비트(26자), 방·참여자·알림 신청 ID는 `AUTOINCREMENT` 정수예요(DEC-049). | 지난 카드와 알림 발송 기록의 참조 번호가 다시 쓰이지 않게 |
 | E-3 | 응답은 문항별 행 대신 8자 문자열 하나(`A`·`B`·`N`)로 둬요. | 응답은 늘 8개를 한꺼번에 읽고 써요. 형식은 CHECK로 막아요 |
 | E-4 | 카드 내용(문항별 수와 분류)은 JSON 열 하나로 둬요. 최종 카드는 트리거로 고정해요. | 카드는 한 번에 읽고, 최종 뒤에는 바뀌지 않아요 |
 | E-5 | 문구 길이: 문항 40자, 선택지 30자, 조율 제안·확정·기본 문구·성향 문구(TBL-016, DEC-039) 60자, 테마 이름 20자. | 요구사항에 없는 한계라 AI가 정했어요. 형식 검사(SPEC-031)와 06 계약이 같은 수를 써요 |

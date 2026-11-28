@@ -8,7 +8,7 @@ export default defineWorkersConfig(async () => ({
         isolatedStorage: true,
         miniflare: {
           compatibilityDate: '2025-04-01',
-          d1Databases: ['DB'],
+          d1Databases: ['DB', 'MIGRATION_DB'],
           bindings: { TEST_MIGRATIONS: await readD1Migrations(fileURLToPath(new URL('../../db/migrations', import.meta.url))) },
         },
       },
