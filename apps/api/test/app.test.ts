@@ -25,6 +25,7 @@ describe('TASK-004 API common layer', () => {
       const response = await request('/rooms/a', origin);
       expect(response.status).toBe(200);
       expect(response.headers.get('access-control-allow-origin')).toBe(origin);
+      expect(response.headers.get('access-control-expose-headers')).toBe('Retry-After');
     }
   });
   it('answers a permitted CORS preflight', async () => {

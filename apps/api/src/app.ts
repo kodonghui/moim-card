@@ -37,6 +37,7 @@ export function createApi(origins: readonly [string, string], routes: Route[] = 
     }
     await next();
     c.header('Access-Control-Allow-Origin', origin);
+    c.header('Access-Control-Expose-Headers', 'Retry-After');
     c.header('Vary', 'Origin');
   });
   for (const route of routes) app.on(route.method.toUpperCase(), route.path, c => route.handler(c.req.raw));
