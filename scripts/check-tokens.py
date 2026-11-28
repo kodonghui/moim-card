@@ -22,7 +22,7 @@ for path in ROOT.rglob('*'):
         issues.append(f'{path}: literal color')
     if path.suffix == '.css':
         for match in DECLARATION.finditer(text):
-            value = re.sub(r'var\(--[\w-]+\)', '', match.group(2)).strip()
+            value = re.sub(r'var\(--[\w-]+\)|!important', '', match.group(2)).strip()
             if value and value != '0':
                 issues.append(f'{path}: non-token {match.group(1)}: {match.group(2)}')
     if path.name != 'AgreementCard.tsx' and re.search(r'--color-card-|color\.card\b', text):
