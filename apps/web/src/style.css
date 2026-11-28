@@ -13,3 +13,23 @@ main { color: var(--color-text-primary); padding: var(--space-6); }
 .entry-actions button:disabled span { color: var(--color-disabled-text) !important; }
 
 .entry-actions button:disabled { opacity: 1 !important; }
+
+.home { display: flex; flex-direction: column; gap: var(--space-6); }
+.home h1 { font-size: var(--font-size-title); margin: 0; }
+.home h2 { font-size: var(--font-size-heading); margin: 0; }
+.home header p { color: var(--color-text-secondary); margin: var(--space-2) 0; }
+.home section { display: flex; flex-direction: column; gap: var(--space-4); }
+.room-list { padding: 0; margin: 0; list-style: none; }
+.room-button, .menu-button, .link-button { font: inherit; color: var(--color-text-primary); background: var(--color-bg-page); border: 0; cursor: pointer; min-height: var(--size-touch); }
+.room-button, .menu-button { width: 100%; text-align: left; padding: var(--space-4) 0; }
+.room-button { display: flex; flex-direction: column; gap: var(--space-2); }
+.room-button span, .as-of, .empty { color: var(--color-text-secondary); }
+.as-of { display: flex; justify-content: space-between; align-items: center; }
+.link-button { color: var(--color-accent-default); padding: 0 var(--space-2); }
+.home nav { display: flex; flex-direction: column; }
+.skeletons { display: flex; flex-direction: column; gap: var(--space-2); }
+.skeletons span:not(.sr-only) { height: var(--size-touch); background: var(--color-skeleton); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+.room-button .room-tags { display: flex; gap: var(--space-2); }
+.room-button .room-tag { background: var(--color-accent-subtle); color: var(--color-accent-on-subtle); padding: var(--space-1) var(--space-2); border-radius: var(--radius-chip); }
