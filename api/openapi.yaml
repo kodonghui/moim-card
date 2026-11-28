@@ -3523,7 +3523,7 @@ components:
         - TBL-011
         - TBL-012
         - TBL-014
-        what: API-007 커밋 뒤 ctx.waitUntil로 send-message를 불러요(x-anon-key, templateSetCode, context). 식별키당 분당 10건, 실패는 기록만
+        what: API-007 커밋 뒤 ctx.waitUntil로 send-message를 불러요(x-anon-key, templateSetCode, context). 식별키당 분당 10건, 실패는 기록만. 다른 응답의 알림은 마감 커밋 뒤 새로 시작하지 않고 이미 신청 확인·복호화를 마친 발송은 끝까지 보내요(DEC-050). 마지막 응답 알림은 DEC-024대로 보내요
       cleanup:
         spec:
         - SPEC-002

@@ -14,9 +14,9 @@ import { requireSession } from './session';
 import { submitResponse, getMyProfile, getCard, closeRoom } from './responses';
 import { createRoom, getRoom, joinRoom, getQuestions } from './rooms';
 
-interface Env extends SessionEnv, NotificationKeys { ORIGIN_PUBLIC: string; ORIGIN_PRIVATE: string }
+interface Env extends SessionEnv, NotificationKeys { ORIGIN_PUBLIC: string; ORIGIN_PRIVATE: string; NOTIFICATION_TEMPLATE_SET_CODE?: string }
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     return createApi([env.ORIGIN_PUBLIC, env.ORIGIN_PRIVATE], [
       {method:'POST', path:'/v1/sessions', handler: req => createSession(req, env)},
       {method:'GET', path:'/v1/themes', middleware: requireSession(env.DB), handler: () => listThemes(env.DB)},
@@ -24,7 +24,7 @@ export default {
       {method:'GET', path:'/v1/rooms/:roomCode', handler: req => getRoom(req, env.DB)},
       {method:'POST', path:'/v1/rooms/:roomCode/participants', handler: req => joinRoom(req, env.DB)},
       {method:'GET', path:'/v1/rooms/:roomCode/questions', handler: req => getQuestions(req, env.DB)},
-      {method:'POST', path:'/v1/rooms/:roomCode/responses', handler: req => submitResponse(req, env.DB)},
+      {method:'POST', path:'/v1/rooms/:roomCode/responses', handler: req => submitResponse(req, env.DB, undefined, ctx ? {env,waitUntil:promise=>ctx.waitUntil(promise)} : undefined)},
       {method:'GET', path:'/v1/rooms/:roomCode/my-profile', handler: req => getMyProfile(req, env.DB)},
       {method:'GET', path:'/v1/rooms/:roomCode/card', handler: req => getCard(req, env.DB)},
       {method:'POST', path:'/v1/rooms/:roomCode/close', handler: req => closeRoom(req, env.DB)},

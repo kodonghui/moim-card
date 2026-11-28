@@ -3,16 +3,16 @@ import { problemResponse } from './app';
 export const ROOM_CREATE_MAX = 30;
 export const ROOM_CREATE_SECONDS = 86400;
 
-type Kind = 'read' | 'room_create' | 'toss';
-type Scope = 'write' | 'room_create' | 'toss_api_user' | 'toss_api_app';
+type Kind = 'read' | 'room_create' | 'toss' | 'send';
+type Scope = 'write' | 'room_create' | 'toss_api_user' | 'toss_api_app' | 'toss_send_key';
 type Limit = {scope: Scope; subject: string; start: number; seconds: number; maximum: number; rolling?: boolean};
 
 /** Minute limits use UTC windows; room creation uses a rolling 24 hours. */
 export async function checkLimit(db: D1Database, kind: Kind, userId: string, now: number, log: (entry: {minute: number; calls: number}) => void = entry => console.log(JSON.stringify({event: 'toss_api_minute', ...entry}))): Promise<Response | null> {
   if (kind === 'read') return null;
   const minute = Math.floor(now / 60) * 60;
-  const limits: Limit[] = kind === 'toss'
-    ? [{scope:'toss_api_user',subject:userId,start:minute,seconds:60,maximum:20}, {scope:'toss_api_app',subject:'app',start:minute,seconds:60,maximum:3000}]
+  const limits: Limit[] = (kind === 'toss' || kind === 'send')
+    ? [{scope:'toss_api_user',subject:userId,start:minute,seconds:60,maximum:20}, {scope:'toss_api_app',subject:'app',start:minute,seconds:60,maximum:3000}, ...(kind === 'send' ? [{scope:'toss_send_key' as const,subject:userId,start:minute,seconds:60,maximum:10}] : [])]
     : [{scope:'room_create',subject:userId,start:now,seconds:ROOM_CREATE_SECONDS,maximum:ROOM_CREATE_MAX,rolling:true}];
   const conditions = limits.map(limit => limit.rolling ? 'COALESCE((SELECT SUM(count) FROM rate_counters WHERE scope=? AND subject=? AND window_start>? AND window_start<=?),0) < ?' : 'COALESCE((SELECT count FROM rate_counters WHERE scope=? AND subject=? AND window_start=?),0) < ?').join(' AND ');
   const rows = limits.map(() => 'SELECT ? AS scope, ? AS subject, ? AS window_start, 1 AS count').join(' UNION ALL ');
@@ -25,7 +25,7 @@ export async function checkLimit(db: D1Database, kind: Kind, userId: string, now
   const sql = `INSERT INTO rate_counters (scope,subject,window_start,count) SELECT scope,subject,window_start,count FROM (${rows}) WHERE ${conditions} ON CONFLICT(scope,subject,window_start) DO UPDATE SET count=count+1 RETURNING scope`;
   const result = await db.prepare(sql).bind(...params).all<{scope: string}>();
   if (result.results.length === limits.length) {
-    if (kind === 'toss') {
+    if (kind === 'toss' || kind === 'send') {
       const count = await db.prepare("SELECT count FROM rate_counters WHERE scope='toss_api_app' AND subject='app' AND window_start=?").bind(minute).first<{count:number}>();
       log({minute, calls: count?.count ?? 0});
     }

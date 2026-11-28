@@ -6,7 +6,7 @@ const PREFIX = '/api-partner/v1/apps-in-toss';
 
 /** Pass a Workers mTLS binding; tests pass an in-memory server with the same fetch interface. */
 export function createTossClient(binding: FetchBinding) {
-  async function call(path: string, body: unknown, anonKey?: string): Promise<Success<unknown> | Failure> {
+  async function call(path: string, body: unknown, anonKey?: string, timeoutMs = 5000): Promise<Success<unknown> | Failure> {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -15,7 +15,7 @@ export function createTossClient(binding: FetchBinding) {
         body: JSON.stringify(body), signal: controller.signal,
       });
       const timeout = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => { controller.abort(); reject(new Error('timeout')); }, 5000);
+        timer = setTimeout(() => { controller.abort(); reject(new Error('timeout')); }, timeoutMs);
       });
       const response = await Promise.race([binding.fetch(request), timeout]);
       if (!response.ok) return {ok: false, reason: 'unavailable'};
@@ -40,8 +40,8 @@ export function createTossClient(binding: FetchBinding) {
       const value = result.value as { anonKey?: unknown } | null;
       return typeof value?.anonKey === 'string' && value.anonKey.length > 0 ? {ok: true, value: value.anonKey} : {ok: false, reason: 'unavailable'};
     },
-    async sendMessage(anonKey: string, templateSetCode: string, context: Record<string, string>): Promise<Success<void> | Failure> {
-      const result = await call('/messenger/send-message', {templateSetCode, context}, anonKey);
+    async sendMessage(anonKey: string, templateSetCode: string, context: Record<string, string>, timeoutMs = 5000): Promise<Success<void> | Failure> {
+      const result = await call('/messenger/send-message', {templateSetCode, context}, anonKey, timeoutMs);
       return result.ok ? {ok: true, value: undefined} : result;
     },
   };

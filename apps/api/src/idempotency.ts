@@ -2,7 +2,7 @@ import { hashToken } from './session';
 import { problemResponse } from './app';
 
 const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-type Plan = { status: number; body: unknown; statements: D1PreparedStatement[]; headers?: Record<string, string> };
+type Plan = { status: number; body: unknown; statements: D1PreparedStatement[]; headers?: Record<string, string>; onCommitted?: (results: D1Result[]) => void };
 type RecordRow = { operation: string; request_sha256: string; status_code: number; response_body: string };
 const response = (status: number, body: unknown, headers: Record<string, string> = {}) => status === 204 ? new Response(null, {status, headers}) : Response.json(body, {status, headers: {...(status >= 400 ? {'content-type': 'application/problem+json'} : {}), ...headers}});
 
@@ -23,11 +23,13 @@ export async function idempotent(db: D1Database, userId: string, key: string | n
   const body = JSON.stringify(result.body ?? null);
   const expire = db.prepare('DELETE FROM idempotency_records WHERE user_id = ? AND request_id = ? AND created_at <= ?').bind(userId, key, now - 86400);
   const insert = db.prepare('INSERT INTO idempotency_records (user_id, request_id, operation, request_sha256, status_code, response_body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(userId, key, operation, digest, result.status, body, now);
-  try { await db.batch([expire, insert, ...result.statements]); }
+  let committed: D1Result[];
+  try { committed = await db.batch([expire, insert, ...result.statements]); }
   catch (error) {
     const winner = await lookup();
     if (winner) return replay(winner);
     throw error;
   }
+  try { result.onCommitted?.(committed); } catch { console.error(JSON.stringify({event:'notification_schedule_failed'})); }
   return response(result.status, result.body, result.headers);
 }
