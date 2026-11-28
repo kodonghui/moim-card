@@ -12,6 +12,7 @@ async function mockPrism(page: Page, method: 'GET' | 'POST', choices: Selection[
     if (choice.delay) await new Promise(resolve => setTimeout(resolve, choice.delay));
     try {
       const response = await route.fetch({ headers: { ...original, authorization: 'Bearer test-token', prefer: `code=${choice.code}${choice.example ? `, example=${choice.example}` : ''}` } });
+      if (method === 'GET' && page.url().endsWith('/room/final') && response.ok()) return route.fulfill({ response, headers: { ...response.headers(), 'access-control-allow-origin': '*' }, json: { ...await response.json(), status: 'closed', myRole: 'none', mySubmitted: false } });
       await route.fulfill({ response, headers: { ...response.headers(), 'access-control-allow-origin': '*' } });
     } catch { /* A timed-out browser request was aborted. */ }
   });

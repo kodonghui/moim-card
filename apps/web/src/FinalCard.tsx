@@ -5,7 +5,7 @@ import { ApiError } from './api';
 import { entryContext } from './entry-context';
 import { navigate } from './routes';
 import { roomContext } from './room-context';
-import { client } from './session';
+import { client, sessionState } from './session';
 type Room = { gatheringName: string; theme: { name: string }; status: 'open' | 'closed'; mySubmitted: boolean };
 export function FinalCard() {
   const [card, setCard] = React.useState<CardData>(); const [room, setRoom] = React.useState<Room>(); const [loading, setLoading] = React.useState(false);
@@ -22,7 +22,7 @@ export function FinalCard() {
       if (err instanceof ApiError && err.problem.code === 'origin_not_allowed') setPermission(true);
       else if (err instanceof ApiError && ['not_participant', 'response_required'].includes(err.problem.code)) navigate('/room', true);
       else if (err instanceof ApiError && err.problem.code === 'room_not_found') setMissing(true);
-      else if (err instanceof ApiError && err.problem.code === 'unauthenticated') navigate('/', true);
+      else if (err instanceof ApiError && ['unauthenticated', 'reauthentication_failed'].includes(err.problem.code)) { sessionState.reauthenticationFailed = true; navigate('/', true); }
       else setError(err instanceof ApiError ? err.problem.traceId || '' : '');
     } finally { clearTimeout(timer); setLoading(false); }
   }, [code, path]);

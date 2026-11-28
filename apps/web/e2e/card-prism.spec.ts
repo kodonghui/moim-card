@@ -12,6 +12,7 @@ async function prism(page: Page, endpoint: string, choices: Selection[]) {
     if (choice.delay) await new Promise(resolve => setTimeout(resolve, choice.delay));
     try {
       const response = await route.fetch({ headers: { ...original, authorization: 'Bearer test-token', prefer: `code=${choice.code}${choice.example ? `, example=${choice.example}` : ''}` } });
+      if (!endpoint && page.url().endsWith('/room/final') && response.ok()) return route.fulfill({ response, headers: { ...response.headers(), ...cors }, json: { ...await response.json(), status: 'closed' } });
       if (choice.member || choice.submittedCount !== undefined) return route.fulfill({ response, headers: { ...response.headers(), ...cors }, json: { ...await response.json(), ...(choice.member ? { myRole: 'member' } : {}), ...(choice.submittedCount !== undefined ? { submittedCount: choice.submittedCount } : {}) } });
       await route.fulfill({ response, headers: { ...response.headers(), ...cors } });
     } catch { /* Browser may abort a timed-out request. */ }
