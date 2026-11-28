@@ -2,7 +2,7 @@ import { problemResponse } from './app';
 import { idempotent } from './idempotency';
 import { validateGatheringName, validateNickname } from './names';
 import { findSessionUser } from './session';
-import { ROOM_CREATE_MAX, ROOM_CREATE_SECONDS } from './rate-limit';
+import { ROOM_CREATE_MAX, ROOM_CREATE_SECONDS, checkLimit } from './rate-limit';
 
 const CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function newRoomCode(): string {
@@ -15,7 +15,7 @@ function newRoomCode(): string {
   }
   return result;
 }
-async function problem(code: 'invalid_request' | 'validation_failed' | 'theme_unavailable', errors?: {field:string;reason:string}[]) {
+async function problem(code: 'invalid_request' | 'validation_failed' | 'theme_unavailable' | 'room_not_found' | 'room_closed' | 'room_full', errors?: {field:string;reason:string}[]) {
   const response = problemResponse(code);
   const body = await response.json() as Record<string, unknown>;
   return {status:response.status,body:errors ? {...body,errors} : body,statements:[]};
@@ -84,4 +84,46 @@ export async function getRoom(request: Request, db: D1Database, now = Math.floor
     WHERE r.code=? AND r.expires_at>?`).bind(user,code,now).first<{roomCode:string;gatheringName:string;partySize:number;submittedCount:number;participantCount:number;status:string;themeId:string;themeName:string;myRole:string;mySubmitted:number}>();
   if (!row) return problemResponse('room_not_found');
   return Response.json({roomCode:row.roomCode,gatheringName:row.gatheringName,theme:{themeId:row.themeId,name:row.themeName},partySize:row.partySize,submittedCount:row.submittedCount,isFull:row.participantCount===8,status:row.status,myRole:row.myRole,mySubmitted:row.mySubmitted===1,asOf:new Date(now*1000).toISOString()});
+}
+
+export async function joinRoom(request: Request, db: D1Database, now = Math.floor(Date.now()/1000)): Promise<Response> {
+  const user = await findSessionUser(db,request.headers.get('Authorization') ?? undefined,now);
+  if (!user) return problemResponse('unauthenticated');
+  const code = new URL(request.url).pathname.split('/')[3] ?? '';
+  const text = await request.text(), key = request.headers.get('Idempotency-Key');
+  const operation = 'POST joinRoom';
+  const requestFingerprint = JSON.stringify([request.method, new URL(request.url).pathname, text]);
+  let counted = false;
+  const execute = () => idempotent(db,user,key,operation,requestFingerprint,now,async () => {
+    if (!counted) {
+      const denied = await checkLimit(db,'write',user,now);
+      if (denied) return {status:429,body:await denied.json(),headers:{'Retry-After':denied.headers.get('Retry-After')!},statements:[]};
+      counted = true;
+    }
+    let value: unknown;
+    try {value=JSON.parse(text)} catch {return problem('invalid_request')}
+    if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k=>k!=='nickname')) return problem('invalid_request');
+    const raw = (value as Record<string,unknown>).nickname;
+    const nickname = typeof raw === 'string' && [...raw].length <= 30 ? validateNickname(raw) : null;
+    if (!nickname?.valid) return problem('validation_failed',[{field:'nickname',reason:nickname?.reason ?? (raw === undefined ? 'required' : typeof raw === 'string' ? 'too_long' : 'invalid_format')}]);
+    if (!/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10}$/.test(code)) return problem('room_not_found');
+    const row = await db.prepare(`SELECT r.id,r.status,r.participant_count AS participantCount,p.role,
+      CASE WHEN resp.participant_id IS NULL THEN 0 ELSE 1 END AS submitted
+      FROM rooms r LEFT JOIN participants p ON p.room_id=r.id AND p.user_id=?
+      LEFT JOIN responses resp ON resp.participant_id=p.id WHERE r.code=? AND r.expires_at>?`).bind(user,code,now).first<{id:number;status:string;participantCount:number;role:string|null;submitted:number}>();
+    if (!row) return problem('room_not_found');
+    if (row.role) return {status:200,body:{roomCode:code,myRole:row.role,mySubmitted:row.submitted===1},statements:[]};
+    if (row.status !== 'open') return problem('room_closed');
+    if (row.participantCount >= 8) return problem('room_full');
+    return {status:201,body:{roomCode:code,myRole:'member',mySubmitted:false},statements:[
+      db.prepare("UPDATE rooms SET participant_count=participant_count+1 WHERE id=? AND status='open' AND participant_count<8 AND expires_at>?").bind(row.id,now),
+      db.prepare("INSERT INTO participants (room_id,user_id,role,nickname,joined_at) VALUES (CASE WHEN changes()=1 THEN ? ELSE NULL END,?,'member',?,?)").bind(row.id,user,nickname.value,now),
+    ]};
+  });
+  try { return await execute(); } catch (error) {
+    // A concurrent join or close can invalidate the snapshot used by the first plan.
+    const current = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10}$/.test(code) ? await db.prepare("SELECT r.status,r.participant_count AS n,EXISTS(SELECT 1 FROM participants p WHERE p.room_id=r.id AND p.user_id=?) AS member FROM rooms r WHERE r.code=? AND r.expires_at>?").bind(user,code,now).first<{status:string;n:number;member:number}>() : null;
+    if (!current || current.status !== 'open' || current.n >= 8 || current.member) return execute();
+    throw error;
+  }
 }
