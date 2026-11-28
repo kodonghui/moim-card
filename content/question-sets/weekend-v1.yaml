@@ -1,0 +1,72 @@
+theme: weekend
+version: 1
+default_next_action: 서로의 선택을 보고 함께 정해요
+profile_phrases:
+  plan_speed_low: 나들이 계획을 천천히 정하는 편이에요
+  plan_speed_high: 나들이 계획을 미리 정하는 편이에요
+  spending_priority_low: 나들이에서 비용을 아끼는 편이에요
+  spending_priority_high: 나들이에서 편의를 중시하는 편이에요
+  schedule_change_low: 나들이에서 정한 계획을 지키는 편이에요
+  schedule_change_high: 나들이에서 상황에 맞춰 바꾸는 편이에요
+  balanced: 나들이에서 여러 방식을 고르게 살펴요
+questions:
+- prompt: 나들이 장소는 언제 정할까요?
+  option_a: 미리 정해요
+  option_b: 당일에 골라요
+  split_suggestion: 후보를 미리 정하고 당일에 골라요
+  agreed_text_a: 장소를 미리 정해요
+  agreed_text_b: 당일에 장소를 골라요
+  axis: plan_speed
+  high_choice: A
+- prompt: 활동을 고를 때 무엇을 우선할까요?
+  option_a: 편리한 시설을 중시해요
+  option_b: 비용을 아껴요
+  split_suggestion: 예산 안에서 편리한 활동을 찾아요
+  agreed_text_a: 편리한 시설을 우선해요
+  agreed_text_b: 활동 비용을 아껴요
+  axis: spending_priority
+  high_choice: A
+- prompt: 날씨가 바뀌면 어떻게 할까요?
+  option_a: 다른 활동으로 바꿔요
+  option_b: 원래 활동을 최대한 지켜요
+  split_suggestion: 실내 대안을 하나 준비해 두어요
+  agreed_text_a: 날씨에 맞춰 활동을 바꿔요
+  agreed_text_b: 원래 활동을 최대한 지켜요
+  axis: schedule_change
+  high_choice: A
+- prompt: 나들이 속도는 어떻게 할까요?
+  option_a: 여러 활동을 해요
+  option_b: 한 곳에서 여유롭게 보내요
+  split_suggestion: 활동 하나를 정하고 쉬는 시간도 남겨요
+  agreed_text_a: 여러 활동을 해요
+  agreed_text_b: 한 곳에서 여유롭게 보내요
+- prompt: 출발 시간은 언제 정할까요?
+  option_a: 며칠 전에 정해요
+  option_b: 전날에 정해요
+  split_suggestion: 가능한 시간대를 먼저 확인해 두어요
+  agreed_text_a: 출발 시간을 며칠 전에 정해요
+  agreed_text_b: 출발 시간을 전날 정해요
+  axis: plan_speed
+  high_choice: A
+- prompt: 이동할 때 무엇을 우선할까요?
+  option_a: 편한 이동을 중시해요
+  option_b: 교통비를 아껴요
+  split_suggestion: 편의와 비용을 함께 비교해요
+  agreed_text_a: 편한 이동을 우선해요
+  agreed_text_b: 교통비를 아껴요
+  axis: spending_priority
+  high_choice: A
+- prompt: 한 곳이 일찍 끝나면 어떻게 할까요?
+  option_a: 다른 활동을 찾아요
+  option_b: 계획한 곳에서 쉬어요
+  split_suggestion: 추가 활동과 휴식 중 그때 함께 골라요
+  agreed_text_a: 다른 활동을 찾아요
+  agreed_text_b: 계획한 곳에서 쉬어요
+  axis: schedule_change
+  high_choice: A
+- prompt: 간식은 어떻게 준비할까요?
+  option_a: 미리 준비해요
+  option_b: 현장에서 골라요
+  split_suggestion: 간단히 준비하고 필요한 것은 현장에서 골라요
+  agreed_text_a: 간식을 미리 준비해요
+  agreed_text_b: 현장에서 간식을 골라요

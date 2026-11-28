@@ -1,0 +1,14 @@
+{
+  "sha256": "5f8a6456c5588485e2cd3885dc181adc8b7e77935b6c9c267a5dcb3b11d8f868",
+  "reviewer": "Codex AI",
+  "date": "2026-11-28",
+  "checks": {
+    "prohibited_categories": true,
+    "politics": true,
+    "polite_style": true,
+    "slang": true,
+    "six_conclusions": true,
+    "og_image": true
+  },
+  "note": "AI가 점검 목록을 확인했어요. OG 이미지는 이 세트에 없어요. 사람 확인은 U-7에서 해요."
+}
