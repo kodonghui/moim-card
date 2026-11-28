@@ -30,4 +30,13 @@ describe('TASK-028 API-014 data summary',()=>{
   expect((await worker.fetch(req(false),bindings)).status).toBe(401);expect((await worker.fetch(req(true,'https://bad.test'),bindings)).status).toBe(403);
   await env.DB.prepare('DROP TABLE past_cards').run();const r=await worker.fetch(req(),bindings);expect(r.status).toBe(500);expect(await r.json()).toMatchObject({code:'internal'});
  });
+ it('excludes closed hosted rooms, open member rooms and interim cards',async()=>{
+  await env.DB.prepare("INSERT INTO themes VALUES ('trip','여행',1)").run();
+  await env.DB.prepare("INSERT INTO question_sets(theme_id,version,status,default_next_action,content_sha256,published_at) VALUES('trip',1,'published','정해요',?,?)").bind('c'.repeat(64),now).run();
+  for(const code of ['ABCDEFGH23','BBBBBBBB23'])await env.DB.prepare('INSERT INTO rooms(code,gathering_name,party_size,question_set_id,created_at,expires_at) VALUES(?,?,4,1,?,?)').bind(code,'여행',now,now+2592000).run();
+  await env.DB.prepare("UPDATE rooms SET status='closed',close_reason='host_closed',closed_at=? WHERE id=1").bind(now).run();
+  await env.DB.prepare("INSERT INTO participants(room_id,user_id,role,nickname,joined_at) VALUES(1,?,'host','이름',?),(2,?,'member','이름',?)").bind(user,now,user,now).run();
+  await env.DB.prepare("INSERT INTO consensus_cards(room_id,stage,based_on_count,items,next_action,computed_at) VALUES(2,'interim',2,?,'정해요',?)").bind(JSON.stringify(Array(8).fill({})),now).run();
+  const body=await (await worker.fetch(req(),bindings)).json();expect(body).toEqual({responseCount:0,nicknameCount:2,notificationSubscriptionCount:0,pastCardCount:0,openHostedRoomCount:0,retainedFinalCardCount:0});
+ });
 });
