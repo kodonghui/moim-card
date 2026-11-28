@@ -1,0 +1,44 @@
+import { problemResponse } from './app';
+import { hashToken } from './session';
+import { createTossClient } from './toss';
+
+export interface SessionEnv {
+  DB: D1Database;
+  TOSS: { fetch(input: Request): Promise<Response> };
+  USER_HMAC_KEY: string;
+}
+
+const hex = (bytes: ArrayBuffer) => Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
+const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+function newId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  let value = 0n;
+  for (const byte of bytes) value = (value << 8n) | BigInt(byte);
+  let result = '';
+  for (let i = 0; i < 26; i++) { result = alphabet[Number(value & 31n)] + result; value >>= 5n; }
+  return result;
+}
+function token(): string {
+  return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+export async function createSession(request: Request, env: SessionEnv, now = Math.floor(Date.now() / 1000)): Promise<Response> {
+  let body: unknown;
+  try { body = await request.json(); } catch { return problemResponse('invalid_request'); }
+  if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length !== 1 || !('authCode' in body) || typeof body.authCode !== 'string' || !/^[\x21-\x7e]{1,512}$/.test(body.authCode)) return problemResponse('validation_failed');
+  const minute = Math.floor(now / 60) * 60;
+  const reservation = await env.DB.prepare("INSERT INTO rate_counters (scope,subject,window_start,count) VALUES ('toss_api_app','app',?,1) ON CONFLICT(scope,subject,window_start) DO UPDATE SET count=count+1 WHERE count<3000 RETURNING count").bind(minute).first<{count:number}>();
+  if (!reservation) return problemResponse('rate_limited', undefined, {'Retry-After': String(minute + 60 - now)});
+  console.log(JSON.stringify({event:'toss_api_minute', minute, calls:reservation.count}));
+  const exchanged = await createTossClient(env.TOSS).exchange(body.authCode);
+  if (!exchanged.ok) return exchanged.reason === 'rate_limited' ? problemResponse('rate_limited', undefined, {'Retry-After': '60'}) : problemResponse('auth_failed');
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(env.USER_HMAC_KEY), {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+  const keyHash = hex(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(exchanged.value)));
+  const sessionToken = token();
+  const tokenHash = await hashToken(sessionToken);
+  await env.DB.batch([
+    env.DB.prepare('INSERT INTO users (id,key_hash,created_at) VALUES (?,?,?) ON CONFLICT(key_hash) DO NOTHING').bind(newId(), keyHash, now),
+    env.DB.prepare('INSERT INTO sessions (token_hash,user_id,created_at,expires_at) SELECT ?,id,?,? FROM users WHERE key_hash=?').bind(tokenHash, now, now + 43200, keyHash),
+  ]);
+  return Response.json({sessionToken, expiresAt:new Date((now + 43200)*1000).toISOString()}, {status:201});
+}

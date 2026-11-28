@@ -92,7 +92,7 @@ paths:
                 not-json:
                   $ref: '#/components/examples/not-json'
         '401':
-          description: 인증 코드를 확인하지 못함(만료·재사용·위조, 토스 오류·시간 초과). D1에 쓴 행은 0개
+          description: 인증 코드를 확인하지 못함(만료·재사용·위조, 토스 오류·시간 초과). 사용자·세션 행은 0개. 토스 호출 한도 계수는 기록
           content:
             application/problem+json:
               schema:
