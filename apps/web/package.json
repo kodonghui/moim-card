@@ -5,15 +5,27 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
-    "build": "tsc"
+    "test": "vitest run --passWithNoTests --exclude 'e2e/**'",
+    "build": "tsc --noEmit && vite build",
+    "dev": "vite --host 0.0.0.0",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@apps-in-toss/web-framework": "3.11.0",
-    "@moim-card/packages-shared": "workspace:*"
+    "@emotion/react": "^11.14.0",
+    "@moim-card/packages-shared": "workspace:*",
+    "@toss/tds-mobile": "2.5.1",
+    "@toss/tds-mobile-ait": "2.5.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.55.1",
+    "@types/react": "^18.3.32",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
     "typescript": "5.8.3",
+    "vite": "^6.4.6",
     "vitest": "3.2.4"
   }
 }

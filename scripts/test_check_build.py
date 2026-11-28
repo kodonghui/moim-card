@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 import tempfile
 import unittest
@@ -38,6 +39,25 @@ class BuildCheckTest(unittest.TestCase):
             with self.subTest(snippet=snippet):
                 self.file.write_text(snippet)
                 self.assertTrue(checker.check(self.package, self.build))
+
+    def test_tds_exception_is_bound_to_vendor_bytes_and_source(self):
+        self.file.write_text('const app = 1;')
+        vendor = self.build / 'assets' / 'tds-vendor-Abc.js'
+        vendor.parent.mkdir()
+        vendor.write_text('"(prefers-color-scheme: dark)"')
+        manifest = self.build / 'tds-provenance.json'
+        data = {'file': 'assets/tds-vendor-Abc.js', 'sha256': hashlib.sha256(vendor.read_bytes()).hexdigest(), 'modules': ['/node_modules/@toss/tds-mobile/dist/esm/index.js']}
+        manifest.write_text(json.dumps(data))
+        self.assertEqual(checker.check(self.package, self.build), [])
+        self.file.write_text('"(prefers-color-scheme: dark)"')
+        self.assertTrue(checker.check(self.package, self.build))
+        self.file.write_text('const app = 1;')
+        vendor.write_text(vendor.read_text() + 'tampered')
+        self.assertTrue(checker.check(self.package, self.build))
+        data['sha256'] = hashlib.sha256(vendor.read_bytes()).hexdigest()
+        data['modules'] = ['/node_modules/other/index.js']
+        manifest.write_text(json.dumps(data))
+        self.assertTrue(checker.check(self.package, self.build))
 
     def test_missing_build_fails(self):
         self.file.unlink()

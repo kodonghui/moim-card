@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -26,6 +26,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - run: pnpm --filter @moim-card/apps-web exec playwright install --with-deps chromium
+      - run: pnpm --filter @moim-card/apps-web test:browser
+      - run: python3 scripts/check-tokens.py
       - run: python3 -m unittest discover -s scripts -p test_check_build.py
       - run: python3 scripts/check-build.py
       - run: python3 -m unittest discover -s scripts -p test_check_question_sets.py
