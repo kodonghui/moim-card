@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:test';
-import {beforeEach,describe,expect,it} from 'vitest';
+import {beforeEach,describe,expect,it,vi} from 'vitest';
 import {hashToken} from '../src/session';
 import worker from '../src/worker';
 const origin='https://example.test',now=Math.floor(Date.now()/1000),key='12345678-1234-1234-1234-123456789abc';
@@ -27,7 +27,11 @@ describe('TASK-024 API-009 card',()=>{
   await env.DB.prepare("CREATE TRIGGER test_fail_card BEFORE INSERT ON consensus_cards BEGIN SELECT RAISE(ABORT, 'interim_card_write_failed'); END").run();
   expect((await worker.fetch(submit('b'),bindings)).status).toBe(201);
   await env.DB.prepare('DROP TRIGGER test_fail_card').run();
-  const r=await worker.fetch(card('a'),bindings);expect(r.status).toBe(200);const body=await r.json() as {stage:string;basedOnCount:number;items:Record<string,unknown>[]};
+  const log=vi.spyOn(console,'log').mockImplementation(()=>{});
+  const r=await worker.fetch(card('a'),bindings);expect(r.status).toBe(200);
+  expect(log.mock.calls.map(args=>JSON.parse(String(args[0])))).toContainEqual({event:'conversion_may_be_missing',count:1});
+  expect(JSON.stringify(log.mock.calls)).not.toContain('ABCDEFGH23');log.mockRestore();
+  const body=await r.json() as {stage:string;basedOnCount:number;items:Record<string,unknown>[]};
   expect(body).toMatchObject({stage:'interim',basedOnCount:2});expect(body.items).toHaveLength(8);expect(body.items[0]).toMatchObject({countA:2,countB:0,countNone:0,text:'A 합의'});
   expect((await env.DB.prepare('SELECT based_on_count AS n FROM consensus_cards').first<{n:number}>())?.n).toBe(2);
  });
