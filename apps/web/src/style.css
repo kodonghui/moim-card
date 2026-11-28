@@ -97,3 +97,5 @@ div[role="alert"] h2 { font-size: var(--font-size-heading); margin: 0; }
 button.tds-mobile-button:disabled { opacity: 1 !important; }
 button.tds-mobile-button:disabled > div:first-child { background-color: var(--color-disabled-bg) !important; }
 button.tds-mobile-button:disabled span { color: var(--color-disabled-text) !important; }
+
+.create section h2, dialog h2 { font-size: var(--font-size-heading); margin: var(--space-2) 0; }
