@@ -6,6 +6,7 @@ async function mock(page: Page, status: number, body: unknown) {
 test('참여 방과 메뉴를 보여 주고 방 코드를 노출하지 않는다', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await mock(page, 200, rooms);
+  await page.route(/\/v1\/rooms\/[^/]+$/, route => route.fulfill({ headers: { 'Access-Control-Allow-Origin': '*' }, json: { gatheringName: '제주 3박', theme: { name: '여행' }, partySize: 4, submittedCount: 3, isFull: false, status: 'open', myRole: 'none', mySubmitted: false, asOf: rooms.asOf } }));
   await page.goto('/home');
   await expect(page.getByText('제주 3박')).toBeVisible();
   await expect(page.getByText('4명 중 3명 답했어요')).toBeVisible();
