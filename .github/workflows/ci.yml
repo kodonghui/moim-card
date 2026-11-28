@@ -18,6 +18,8 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+      - run: python3 -m unittest discover -s scripts -p test_check_build.py
+      - run: python3 scripts/check-build.py
       - run: python3 scripts/check-contract.py
       - run: python3 scripts/check-screens.py
       - run: python3 scripts/check-wbs.py
