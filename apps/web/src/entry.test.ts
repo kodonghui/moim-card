@@ -31,6 +31,13 @@ describe('SCR-001 진입 확인', () => {
     expect(x.navigate).toHaveBeenCalledWith('/room');
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
+  it('유입 기록이 끝나지 않아도 진입을 지연하지 않는다', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(json({ sessionToken: 'token' }, 201)).mockImplementationOnce(() => new Promise(() => {}));
+    const x = setup(fetcher);
+    await startEntry(x.args);
+    expect(x.navigate).toHaveBeenCalledWith('/home');
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
   it('허용되지 않은 Origin은 버튼 없는 permission 상태다', async () => {
     const x = setup(vi.fn().mockResolvedValue(json({ status: 403, code: 'origin_not_allowed' }, 403)));
     await startEntry(x.args); expect(x.states.at(-1)).toEqual({ kind: 'permission' });

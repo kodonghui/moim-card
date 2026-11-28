@@ -14,10 +14,12 @@ python3 -m pip install -r requirements-checks.txt
 pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm test
-pnpm build
+VITE_API_BASE_URL=https://your-api.example pnpm build
 pnpm --filter @moim-card/apps-web exec playwright install --with-deps chromium
 pnpm --filter @moim-card/apps-web test:browser
 python3 scripts/check-tokens.py
+python3 -m unittest discover -s scripts -p test_check_tokens.py
+python3 -m unittest discover -s scripts -p test_web_build_env.py
 python3 -m unittest discover -s scripts -p test_check_build.py
 python3 scripts/check-build.py
 python3 -m unittest discover -s scripts -p test_check_question_sets.py
@@ -35,3 +37,5 @@ python3 scripts/check-wbs.py
 pnpm --filter @moim-card/apps-web dev
 pnpm dlx @stoplight/prism-cli mock api/openapi.yaml
 ```
+
+운영 빌드에는 실제 HTTPS API 주소를 `VITE_API_BASE_URL` 환경 변수로 전달해요. 개발 서버에서만 값이 없을 때 로컬 Prism 주소를 사용해요.
