@@ -1,6 +1,6 @@
 # 모임 합의 카드(가칭): 화면 정의 (08)
 
-상태: **초안, 체크포인트 대기**(2026-11-28) · 체크포인트 질문: [checkpoint-08.md](checkpoint-08.md) · 와이어프레임: [wireframes.html](wireframes.html)(회색 와이어프레임, 상태마다 한 장, 360px·430px)
+상태: **체크포인트 통과**(2026-11-28, DEC-028·029) · 체크포인트 질문: [checkpoint-08.md](checkpoint-08.md) · 와이어프레임: [wireframes.html](wireframes.html)(회색 와이어프레임, 상태마다 한 장, 360px·430px)
 
 - 입력: [07 사이트맵](../07-sitemap/sitemap.yaml)(SCR-001~015), [04 기능 명세](../04-functional-spec/spec.md)(SPEC-001~039, C-1~C-10), [06 API 계약](../../api/openapi.yaml)(API-001~016, 오류 코드 22개와 각 코드의 `client` 칸).
 - 화면 하나에 파일 하나예요(`SCR-001.md` …). 파일마다 목적, 데이터와 출처 API, 동작(결과·실패), 상태, 응답과 상태, 경우의 종류, 규칙이 있어요.

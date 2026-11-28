@@ -1,5 +1,13 @@
 # 진행 기록
 
+### 2026-11-28 · 07·08 체크포인트 답 기록과 통과
+
+- Done: 토링이가 전한 오랑이 답(사용자님 위임, 근거 2026-11-23 "추천 모두 승인", 2026-11-27 "DDD랑 목업때만")을 DEC-027(07 질문 1, 화면 15개 구조), DEC-028(08 질문 1, 화면 정의 15개·상태 70개), DEC-029(08 질문 2, 지운 뒤 자동으로 처음 화면에 가지 않음)로 기록하고 DEC-026을 in force로 바꿨어요. 결정된 문장과 상태 칸만 고쳤어요: FL-012 "지워졌어요 안내" 문장과 상태 줄, SCR-013 규칙, 두 체크포인트 파일의 상태 줄과 답, 07·08 README 상태 줄. `.corthex/stages.json`의 07·08을 `done`으로 바꾸고 체크포인트를 적었어요. 오랑이 요청(목업 때 방장 화면 버튼 수와 문구 길이를 사용자님과 같이 봄)을 [09 준비](../09-mockup/prep.md)에 한 줄 더했어요.
+- Why: 07·08은 DDD·목업이 아니라 위임 답으로 통과를 기록해요(DEC-014). 토링이 작업 지시(2026-11-28, Orca 작업 task_e0e5326e02a0).
+- Result: 07·08 통과. 승인 버전은 PR #9 커밋 `9d1f5c9`와 이 답을 반영한 커밋이에요. DDD(01)는 바꾸지 않았어요.
+- Checked: term-check, `scripts/check-screens.py`, `hub push moim-card --dry-run` 결과는 PR #9와 보고에 적어요.
+- Next: PR #9 병합(토링이) → `push moim-card` → 09 목업은 사용자님 답(Orca 항목 256)을 기다려요.
+
 ### 2026-11-28 · 07 사이트맵과 08 화면 정의 초안, 09 목업 준비
 
 - Done: `corthex-screen`으로 07 사이트맵([sitemap.yaml](../07-sitemap/sitemap.yaml), SCR-001~015)과 08 화면 정의([08-screens](../08-screens/README.md), 화면 15개, 상태 70개, 공통 처리 G-1~G-10)를 썼어요. 03 흐름 16개의 단계 표에 SCR 칸을 더했어요(단계 161개, 뜻 바뀜 없음). 보기와 와이어프레임을 그리는 [scripts/draw-screens.py](../../scripts/draw-screens.py)와 연결 검사 [scripts/check-screens.py](../../scripts/check-screens.py)를 더했어요. 체크포인트 질문은 [checkpoint-07.md](../07-sitemap/checkpoint-07.md)(질문 1개)와 [checkpoint-08.md](../08-screens/checkpoint-08.md)(질문 2개)에, AI가 정한 것은 DEC-026(proposed)에 있어요. 09 목업은 만들지 않고 사용자님 질문 두 개를 [09-mockup/prep.md](../09-mockup/prep.md)에 준비했어요. `.corthex/project.json`에 07·08 단계 설정(human `nexus`, truth `source`)을 더했어요.

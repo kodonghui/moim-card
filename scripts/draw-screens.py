@@ -90,7 +90,7 @@ for d, n, p in flat:
 lst = "\n".join("| %s | %s%s | `%s` | %s | %s |" % (n["id"], "↳ " * d, n["name"], n["path"], n["access"], ", ".join(n.get("flows") or [])) for d, n, _ in flat)
 readme7 = """# 모임 합의 카드(가칭): 사이트맵 (07)
 
-상태: **초안, 체크포인트 대기**(2026-11-28) · 원본: [sitemap.yaml](sitemap.yaml)(truth: source) · 보기 세 개(보드, 목록, 슬라이드): [sitemap.html](sitemap.html) · 체크포인트 질문: [checkpoint-07.md](checkpoint-07.md)
+상태: **체크포인트 통과**(2026-11-28, DEC-027) · 원본: [sitemap.yaml](sitemap.yaml)(truth: source) · 보기 세 개(보드, 목록, 슬라이드): [sitemap.html](sitemap.html) · 체크포인트 질문: [checkpoint-07.md](checkpoint-07.md)
 
 이 파일과 sitemap.html은 `python3 scripts/draw-screens.py`가 sitemap.yaml에서 그려요(그린 시각 %s). 손으로 고치지 않아요.
 

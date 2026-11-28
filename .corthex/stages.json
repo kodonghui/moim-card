@@ -77,6 +77,11 @@
           "level": "info",
           "message": "07에서 흐름 16개의 단계 표에 SCR 칸을 더함(단계 161개 모두 채움, 뜻 바뀜 없음)",
           "at": "2026-11-28"
+        },
+        {
+          "level": "info",
+          "message": "FL-012 '지워졌어요 안내' 문장을 DEC-029로 고침(자동 이동 없이 [미니앱 닫기]·[처음 화면으로])",
+          "at": "2026-11-28"
         }
       ],
       "next": "07 사이트맵 뒤 단계에 SCR ID를 더함",
@@ -166,7 +171,7 @@
       ]
     },
     "07-sitemap": {
-      "state": "in_progress",
+      "state": "done",
       "checks": [
         {
           "level": "info",
@@ -174,12 +179,19 @@
           "at": "2026-11-28"
         }
       ],
-      "next": "07 질문 1 답(오랑이 위임, DEC-014) → 통과 기록",
-      "updated": "2026-11-28T23:30:00+09:00",
-      "checkpoints": []
+      "next": "09 목업: 사용자님 답 대기(Orca 항목 256, docs/09-mockup/prep.md)",
+      "updated": "2026-11-28T23:59:00+09:00",
+      "checkpoints": [
+        {
+          "approved": "07 사이트맵 체크포인트 통과(내비게이션 구조 합의). 질문 1(SCR-001~015, PR #9 커밋 9d1f5c9)은 오랑이가 사용자님 위임으로 추천안 승인(DEC-027, 위임 근거 2026-11-23 \"추천 모두 승인\", 2026-11-27 \"DDD랑 목업때만\"). S-1~S-8 함께 승인(DEC-026). NEXUS 확정 없이 통과(DEC-014)",
+          "by": "the orchestrator agent on the owner's behalf",
+          "where": "docs/records/decisions.md (DEC-026, DEC-027)",
+          "date": "2026-11-28"
+        }
+      ]
     },
     "08-screen-states": {
-      "state": "in_progress",
+      "state": "done",
       "checks": [
         {
           "level": "info",
@@ -187,14 +199,21 @@
           "at": "2026-11-28"
         },
         {
-          "level": "warn",
-          "message": "08 질문 2: FL-012 '지워졌어요 안내'(처음 화면으로 자동 이동)를 바꾸자는 제안, 답 대기",
+          "level": "info",
+          "message": "08 질문 2 추천안 1(DEC-029): FL-012 '지워졌어요 안내'와 SCR-013 규칙을 고침",
           "at": "2026-11-28"
         }
       ],
-      "next": "08 질문 1·2 답(오랑이 위임) → 통과 기록 → 09 목업(사용자님 질문은 docs/09-mockup/prep.md)",
-      "updated": "2026-11-28T23:30:00+09:00",
-      "checkpoints": []
+      "next": "09 목업: 사용자님 답 대기(Orca 항목 256). 목업 때 방장 화면 버튼 수·문구 길이를 함께 봄(DEC-028). 11 개발은 화면 코드 전에 이 정의를 먼저 고침",
+      "updated": "2026-11-28T23:59:00+09:00",
+      "checkpoints": [
+        {
+          "approved": "08 화면 정의 체크포인트 통과(구현 전 화면 정의 승인). 질문 1(화면 정의 15개, 상태 70개, G-1~G-10, PR #9 커밋 9d1f5c9)·질문 2(지운 뒤 자동으로 처음 화면에 가지 않음, FL-012 문장 고침)는 오랑이가 사용자님 위임으로 추천안 승인(DEC-028, DEC-029, 위임 근거 2026-11-23 \"추천 모두 승인\", 2026-11-27 \"DDD랑 목업때만\"). W-1~W-12 함께 승인(DEC-026). NEXUS 확정 없이 통과(DEC-014)",
+          "by": "the orchestrator agent on the owner's behalf",
+          "where": "docs/records/decisions.md (DEC-026, DEC-028, DEC-029)",
+          "date": "2026-11-28"
+        }
+      ]
     }
   }
 }
