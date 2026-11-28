@@ -34,7 +34,7 @@ async function readRoom(db:D1Database,user:string,code:string,now:number):Promis
  FROM rooms r JOIN question_sets q ON q.id=r.question_set_id LEFT JOIN participants p ON p.room_id=r.id AND p.user_id=?
  LEFT JOIN responses resp ON resp.participant_id=p.id WHERE r.code=? AND r.expires_at>?`).bind(user,code,now).first<Room>();
 }
-async function readQuestions(db:D1Database,setId:number):Promise<Question[]> {
+export async function readQuestions(db:D1Database,setId:number):Promise<Question[]> {
  const result=await db.prepare(`SELECT position,prompt,option_a AS optionA,option_b AS optionB,split_suggestion AS splitSuggestion,
  agreed_text_a AS agreedTextA,agreed_text_b AS agreedTextB,axis,axis_pole_a AS axisPoleA FROM questions WHERE question_set_id=? ORDER BY position`).bind(setId).all<Question>();
  if(result.results.length!==8) throw new Error('Question set incomplete');return result.results;
@@ -43,7 +43,7 @@ async function readAnswers(db:D1Database,roomId:number):Promise<Answer[][]> {
  const result=await db.prepare('SELECT answers FROM responses WHERE room_id=?').bind(roomId).all<{answers:string}>();
  return result.results.map(row=>[...row.answers] as Answer[]);
 }
-function serializedItems(items: ReturnType<typeof calculateCard>['items']) {
+export function serializedItems(items: ReturnType<typeof calculateCard>['items']) {
  return JSON.stringify(items.map(i=>({position:i.position,a:i.countA,b:i.countB,none:i.countNone,category:i.category})));
 }
 async function profile(db:D1Database,setId:number,questions:Question[],answers:Answer[]) {

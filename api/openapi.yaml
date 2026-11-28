@@ -2322,7 +2322,6 @@ paths:
         - TBL-014
         omit:
           '404': 경로가 지금 사용자를 가리키고, 이미 지운 사용자도 204예요
-          '409': 어떤 상태에서도 지울 수 있어요. 본문이 없어 같은 요청 ID의 다른 내용도 없어요
         cases:
           repeats: 이미 지웠으면 204
           concurrency: 같은 방에 다른 응답이 오면 C-4
@@ -2365,6 +2364,15 @@ paths:
               examples:
                 origin-not-allowed:
                   $ref: '#/components/examples/origin-not-allowed'
+        '409':
+          description: 다른 요청에 사용한 요청 ID로 지우기를 요청함
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                idempotency-conflict:
+                  $ref: '#/components/examples/idempotency-conflict'
         '429':
           description: 요청 한도를 넘음. 아무것도 바뀌지 않음
           content:
