@@ -126,3 +126,16 @@ export async function readFreshInterimCard(db:D1Database,roomId:number,now:numbe
  }
  throw new Error('Concurrent card repair did not settle');
 }
+
+export async function getMyProfile(request:Request,db:D1Database,now=Math.floor(Date.now()/1000)):Promise<Response> {
+ const user=await findSessionUser(db,request.headers.get('Authorization')??undefined,now);if(!user)return problemResponse('unauthenticated');
+ const code=new URL(request.url).pathname.split('/')[3]??'';
+ if(!CODE.test(code))return problemResponse('room_not_found');
+ const room=await readRoom(db,user,code,now);if(!room)return problemResponse('room_not_found');
+ if(!room.participantId)return problemResponse('not_participant');
+ if(!room.responseId)return problemResponse('response_required');
+ const stored=await db.prepare('SELECT answers FROM responses WHERE participant_id=? AND room_id=?').bind(room.participantId,room.id).first<{answers:string}>();
+ if(!stored) return problemResponse('response_required');
+ const questions=await readQuestions(db,room.setId);
+ return Response.json(await profile(db,room.setId,questions,[...stored.answers] as Answer[]));
+}

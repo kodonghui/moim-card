@@ -3,7 +3,7 @@ import { createApi } from './app';
 import { createSession, type SessionEnv } from './create-session';
 import { listThemes } from './themes';
 import { requireSession } from './session';
-import { submitResponse } from './responses';
+import { submitResponse, getMyProfile } from './responses';
 import { createRoom, getRoom, joinRoom, getQuestions } from './rooms';
 
 interface Env extends SessionEnv { ORIGIN_PUBLIC: string; ORIGIN_PRIVATE: string }
@@ -17,6 +17,7 @@ export default {
       {method:'POST', path:'/v1/rooms/:roomCode/participants', handler: req => joinRoom(req, env.DB)},
       {method:'GET', path:'/v1/rooms/:roomCode/questions', handler: req => getQuestions(req, env.DB)},
       {method:'POST', path:'/v1/rooms/:roomCode/responses', handler: req => submitResponse(req, env.DB)},
+      {method:'GET', path:'/v1/rooms/:roomCode/my-profile', handler: req => getMyProfile(req, env.DB)},
     ]).fetch(request);
   },
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
