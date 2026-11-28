@@ -1,1 +1,1 @@
-export {};
+export { validateNickname, validateGatheringName } from './names';

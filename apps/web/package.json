@@ -9,7 +9,8 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@apps-in-toss/web-framework": "3.11.0"
+    "@apps-in-toss/web-framework": "3.11.0",
+    "@moim-card/packages-shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "5.8.3",
