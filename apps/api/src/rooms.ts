@@ -125,3 +125,24 @@ export async function joinRoom(request: Request, db: D1Database, now = Math.floo
     throw error;
   }
 }
+
+export async function getQuestions(request: Request, db: D1Database, now = Math.floor(Date.now()/1000)): Promise<Response> {
+  const user = await findSessionUser(db,request.headers.get('Authorization') ?? undefined,now);
+  if (!user) return problemResponse('unauthenticated');
+  const code = new URL(request.url).pathname.split('/')[3] ?? '';
+  if (!/^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10}$/.test(code)) return problemResponse('room_not_found');
+  const result = await db.prepare(`SELECT r.status,p.id AS participantId,resp.participant_id AS responseId,
+    qs.version,q.position,q.prompt,q.option_a AS optionA,q.option_b AS optionB
+    FROM rooms r JOIN question_sets qs ON qs.id=r.question_set_id
+    LEFT JOIN participants p ON p.room_id=r.id AND p.user_id=?
+    LEFT JOIN responses resp ON resp.participant_id=p.id
+    LEFT JOIN questions q ON q.question_set_id=qs.id
+    WHERE r.code=? AND r.expires_at>? ORDER BY q.position`).bind(user,code,now).all<{status:string;participantId:number|null;responseId:number|null;version:number;position:number|null;prompt:string;optionA:string;optionB:string}>();
+  const first=result.results[0];
+  if (!first) return problemResponse('room_not_found');
+  if (!first.participantId) return problemResponse('not_participant');
+  if (first.status !== 'open') return problemResponse('room_closed');
+  if (first.responseId) return problemResponse('already_submitted');
+  if (result.results.length !== 8 || result.results.some(q=>q.position === null)) throw new Error('Question set is incomplete');
+  return Response.json({questionSetVersion:first.version,questions:result.results.map(q=>({position:q.position,prompt:q.prompt,optionA:q.optionA,optionB:q.optionB}))});
+}
