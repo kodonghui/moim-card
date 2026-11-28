@@ -52,7 +52,7 @@ async function profile(db:D1Database,setId:number,questions:Question[],answers:A
  const phrases=Object.fromEntries(rows.results.map(row=>[row.slot,row.phrase])) as ProfilePhrases;
  return calculateProfile(questions.map(q=>({axis:q.axis,highChoice:q.axisPoleA==null?null:q.axisPoleA==='high'?'A':'B'})),answers,phrases);
 }
-/** Only messages uniquely identifying the card write qualify; unknown failures are never retried as partial success. */
+/** Only errors identifying the card write qualify. The explicit marker is for fault injection; production failures often lack a statement identifier, so unknown failures stay errors. */
 function isCardWriteFailure(error:unknown):boolean {
  const message=error instanceof Error ? error.message : '';
  return /(?:interim_card_write_failed|(?:UNIQUE|FOREIGN KEY) constraint failed: consensus_cards\.)/.test(message);
@@ -89,8 +89,7 @@ export async function submitResponse(request:Request,db:D1Database,now=Math.floo
       reserve(),
     ];
     if(card) statements.push(db.prepare("INSERT INTO consensus_cards(room_id,stage,based_on_count,items,next_action,computed_at,finalized_at) VALUES(?,'interim',?,?,?,?,NULL) ON CONFLICT(room_id) DO UPDATE SET stage='interim',based_on_count=excluded.based_on_count,items=excluded.items,next_action=excluded.next_action,computed_at=excluded.computed_at WHERE consensus_cards.stage='interim'").bind(room.id,count,serializedItems(card.items),card.nextAction,now));
-    const existing= fallback && count>=2 ? await db.prepare("SELECT 1 FROM consensus_cards WHERE room_id=? AND stage='interim'").bind(room.id).first() : null;
-    return {status:201,body:{roomStatus:'open',submittedCount:count,partySize:room.partySize,cardStage:withCard||existing?'interim':'none',logConversion:conversion,profile:resultProfile},statements};
+    return {status:201,body:{roomStatus:'open',submittedCount:count,partySize:room.partySize,cardStage:count>=2?'interim':'none',logConversion:conversion,profile:resultProfile},statements};
    });
   } catch(error) {
    if(error instanceof Error && error.message.includes('stale_submission_snapshot')) continue;

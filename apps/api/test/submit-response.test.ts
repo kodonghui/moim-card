@@ -56,9 +56,12 @@ describe('TASK-021 API-007 submit response',()=>{
   await env.DB.prepare('DROP TRIGGER test_fail_card').run();
   expect(await readFreshInterimCard(env.DB,1,now)).toMatchObject({basedOnCount:2});expect(await count('consensus_cards')).toBe(1);
  });
- it('does not use the fallback when the response write fails',async()=>{
-  await env.DB.prepare("CREATE TRIGGER test_fail_response BEFORE INSERT ON responses BEGIN SELECT RAISE(ABORT, 'response_write_failed'); END").run();
-  const r=await worker.fetch(req(),bindings);expect(r.status).toBe(500);expect(await count('responses')).toBe(0);expect(await count('idempotency_records')).toBe(0);expect(await count('rate_counters')).toBe(0);
+ it('does not use the fallback when the card failure is not identifiable',async()=>{
+  expect((await worker.fetch(req(),bindings)).status).toBe(201);
+  await env.DB.prepare("CREATE TRIGGER test_unknown_card_failure BEFORE INSERT ON consensus_cards BEGIN SELECT RAISE(ABORT, 'disk_full'); END").run();
+  const r=await worker.fetch(req(tokenB),bindings);expect(r.status).toBe(500);expect(await count('responses')).toBe(1);
+  expect((await env.DB.prepare('SELECT count(*) AS n FROM idempotency_records WHERE user_id=?').bind(userB).first<{n:number}>())?.n).toBe(0);
+  expect((await env.DB.prepare("SELECT count(*) AS n FROM rate_counters WHERE scope='write' AND subject=?").bind(userB).first<{n:number}>())?.n).toBe(0);
  });
  it('serializes concurrent interim submissions and keeps a complete card',async()=>{
   await worker.fetch(req(),bindings);
