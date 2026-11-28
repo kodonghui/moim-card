@@ -5,9 +5,9 @@ import { transactionBatch } from '../src/batch';
 const user = (id: string, hash: string) => env.DB.prepare('INSERT INTO users (id, key_hash, created_at) VALUES (?, ?, 0)').bind(id.repeat(26), hash.repeat(64));
 
 describe('TASK-003 local D1', () => {
-  it('applies all 15 application tables to an empty database', async () => {
+  it('applies all 16 application tables to an empty database', async () => {
     const tables = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name != 'd1_migrations'").all();
-    expect(tables.results).toHaveLength(15);
+    expect(tables.results).toHaveLength(16);
     expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM users').first<{n: number}>())?.n).toBe(0);
     await user('a', 'a').run();
   });
