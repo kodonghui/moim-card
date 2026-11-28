@@ -13,7 +13,7 @@ test('방 소개에서 닉네임을 적어 입장한다', async ({ page }) => {
     return route.fulfill({ headers: cors, json: room });
   });
   await enter(page);
-  await expect(page.getByText('인원 4명 · 1명 답했어요')).toBeVisible();
+  await expect(page.getByText('인원 4명', { exact: true })).toBeVisible(); await expect(page.getByText('1명 답했어요', { exact: true })).toBeVisible();
   await expect(page.getByText('ABCDEFGH23')).toHaveCount(0);
   if (process.env.CAPTURE_JOIN) await page.screenshot({ path: '../../docs/10-wbs/captures/task-040.png', fullPage: true });
   await page.getByRole('button', { name: '참여하기' }).click();

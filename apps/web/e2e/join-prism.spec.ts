@@ -63,6 +63,11 @@ for (const [code, example, heading] of [[403, undefined, '지금은 쓸 수 없�
   await mockPrism(page, 'GET', [{ code: 200, example: 'open-newcomer' }]); await mockPrism(page, 'POST', [{ code, example }]);
   await joinForm(page); await page.getByRole('button', { name: '들어가기' }).click(); await expect(page.getByRole('heading', { name: heading })).toBeVisible();
 });
+test('입장 중 가득 차면 입력을 유지하고 입장을 끄며 새 방을 안내한다', async ({ page }) => {
+  await mockPrism(page, 'GET', [{ code: 200, example: 'open-newcomer' }]); await mockPrism(page, 'POST', [{ code: 409, example: 'room-full' }]);
+  await joinForm(page); await page.getByRole('button', { name: '들어가기' }).click();
+  await expect(page.getByLabel('닉네임')).toHaveValue('바다'); await expect(page.getByRole('button', { name: '들어가기' })).toBeDisabled(); await expect(page.getByRole('button', { name: '방 만들기' })).toBeVisible();
+});
 test('입장 중 방이 마감되면 최종 카드로 이동한다', async ({ page }) => {
   await mockPrism(page, 'GET', [{ code: 200, example: 'open-newcomer' }]); await mockPrism(page, 'POST', [{ code: 409, example: 'room-closed' }]);
   await joinForm(page); await page.getByRole('button', { name: '들어가기' }).click(); await expect(page).toHaveURL(/\/room\/final$/);
