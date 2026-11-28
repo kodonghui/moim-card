@@ -4,7 +4,7 @@ export class ApiError extends Error {
   constructor(readonly problem: Problem, readonly retryAfter: number = 0) { super(problem.code); }
 }
 type Options = { baseUrl: string; reauthenticate: () => Promise<string>; fetcher?: typeof fetch; onLoading?: (loading: boolean) => void };
-type RequestOptions = { method?: 'GET' | 'POST' | 'DELETE'; body?: unknown; idempotent?: boolean; authenticated?: boolean };
+type RequestOptions = { method?: 'GET' | 'POST' | 'DELETE'; body?: unknown; idempotent?: boolean; authenticated?: boolean; retryAuthentication?: boolean };
 export class ApiClient {
   private token: string | undefined;
   private readonly fetcher: typeof fetch;
@@ -31,7 +31,7 @@ export class ApiClient {
         return await this.once<T>(path, request, key.value);
       } catch (error) {
         if (!(error instanceof ApiError)) throw error;
-        if (error.problem.status === 401 && error.problem.code === 'unauthenticated' && request.authenticated !== false && !refreshed) {
+        if (error.problem.status === 401 && error.problem.code === 'unauthenticated' && request.authenticated !== false && request.retryAuthentication !== false && !refreshed) {
           refreshed = true;
           this.token = await this.options.reauthenticate();
           continue;

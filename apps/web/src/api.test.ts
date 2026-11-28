@@ -54,6 +54,15 @@ describe('공통 API 처리', () => {
     expect(reauthenticate).toHaveBeenCalledTimes(1);
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
+  it('유입 기록은 인증 실패 시 재확인하지 않는다', async () => {
+    const fetcher = vi.fn().mockResolvedValue(json({ status: 401, code: 'unauthenticated' }, 401));
+    const reauthenticate = vi.fn();
+    const client = new ApiClient({ baseUrl: 'http://localhost', fetcher, reauthenticate });
+    client.setToken('token');
+    await expect(client.operation('/v1/entries', { method: 'POST', retryAuthentication: false })()).rejects.toBeInstanceOf(ApiError);
+    expect(fetcher.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer token');
+    expect(reauthenticate).not.toHaveBeenCalled();
+  });
   it('화면이 다시 보일 때만 새로고침하고 기준 시각을 표시한다', () => {
     let listener!: () => void;
     const doc = { visibilityState: 'hidden', addEventListener: vi.fn((_event, cb) => { listener = cb; }), removeEventListener: vi.fn() };
