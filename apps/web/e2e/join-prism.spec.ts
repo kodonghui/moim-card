@@ -44,9 +44,11 @@ test('느린 방 조회는 자리 표시를 보이고 오류 뒤 재시도한다
 for (const [code, heading] of [[403, '지금은 쓸 수 없어요'], [404, '이 방은 없거나 보관 기간이 지났어요']] as const) test(`방 조회 ${code} 안내`, async ({ page }) => {
   await mockPrism(page, 'GET', [{ code }]); await page.goto('/room?room=ABCDEFGH23'); await expect(page.getByRole('heading', { name: heading })).toBeVisible();
 });
-test('마감된 방과 이미 응답한 참여자는 정의된 화면으로 이동한다', async ({ page }) => {
+test('마감된 방은 최종 화면으로 이동한다', async ({ page }) => {
   await mockPrism(page, 'GET', [{ code: 200, example: 'closed' }]); await page.goto('/room?room=ABCDEFGH23'); await expect(page).toHaveURL(/\/room\/final$/);
-  await page.unrouteAll(); await mockDestinations(page); await mockPrism(page, 'GET', [{ code: 200, example: 'open-host' }]);
+});
+test('이미 응답한 참여자는 결과 화면으로 이동한다', async ({ page }) => {
+  await mockPrism(page, 'GET', [{ code: 200, example: 'open-host' }]);
   await page.goto('/room?room=ABCDEFGH23'); await expect(page).toHaveURL(/\/room\/result$/);
 });
 test('Prism 201 입장은 문항으로 이동한다', async ({ page }) => {
