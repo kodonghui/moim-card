@@ -67,9 +67,9 @@ describe('TASK-019 API-005 join room',()=>{
   await started;
   await env.DB.prepare("UPDATE rooms SET status='closed',close_reason='host_closed',closed_at=? WHERE id=1").bind(now).run();
   release();const r=await pending;
-  expect(r.status).toBe(409);expect(await r.json()).toMatchObject({code:'room_closed'});expect(await count('participants')).toBe(0);
+  expect(r.status).toBe(409);expect(await r.json()).toMatchObject({code:'room_closed'});expect(await count('participants')).toBe(0);expect(await count('rate_counters')).toBe(0);
  });
  it('rolls back a failed write and returns default 500',async()=>{
-  await env.DB.prepare('DROP TABLE participants').run();const r=await worker.fetch(req(),bindings);expect(r.status).toBe(500);expect(await r.json()).toMatchObject({code:'internal'});expect(await count('rate_counters')).toBe(0);expect(await count('idempotency_records')).toBe(0);
+  await env.DB.prepare("CREATE TRIGGER test_join_failure BEFORE INSERT ON participants BEGIN SELECT RAISE(ABORT, 'injected_failure'); END").run();const r=await worker.fetch(req(),bindings);expect(r.status).toBe(500);expect(await r.json()).toMatchObject({code:'internal'});expect(await count('rate_counters')).toBe(0);expect(await count('idempotency_records')).toBe(0);
  });
 });

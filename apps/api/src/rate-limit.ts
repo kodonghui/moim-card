@@ -3,7 +3,7 @@ import { problemResponse } from './app';
 export const ROOM_CREATE_MAX = 30;
 export const ROOM_CREATE_SECONDS = 86400;
 
-type Kind = 'read' | 'write' | 'room_create' | 'toss';
+type Kind = 'read' | 'room_create' | 'toss';
 type Scope = 'write' | 'room_create' | 'toss_api_user' | 'toss_api_app';
 type Limit = {scope: Scope; subject: string; start: number; seconds: number; maximum: number; rolling?: boolean};
 
@@ -13,7 +13,7 @@ export async function checkLimit(db: D1Database, kind: Kind, userId: string, now
   const minute = Math.floor(now / 60) * 60;
   const limits: Limit[] = kind === 'toss'
     ? [{scope:'toss_api_user',subject:userId,start:minute,seconds:60,maximum:20}, {scope:'toss_api_app',subject:'app',start:minute,seconds:60,maximum:3000}]
-    : kind === 'room_create' ? [{scope:'room_create',subject:userId,start:now,seconds:ROOM_CREATE_SECONDS,maximum:ROOM_CREATE_MAX,rolling:true}] : [{scope:'write',subject:userId,start:minute,seconds:60,maximum:60}];
+    : [{scope:'room_create',subject:userId,start:now,seconds:ROOM_CREATE_SECONDS,maximum:ROOM_CREATE_MAX,rolling:true}];
   const conditions = limits.map(limit => limit.rolling ? 'COALESCE((SELECT SUM(count) FROM rate_counters WHERE scope=? AND subject=? AND window_start>? AND window_start<=?),0) < ?' : 'COALESCE((SELECT count FROM rate_counters WHERE scope=? AND subject=? AND window_start=?),0) < ?').join(' AND ');
   const rows = limits.map(() => 'SELECT ? AS scope, ? AS subject, ? AS window_start, 1 AS count').join(' UNION ALL ');
   const params: (string | number)[] = [];
