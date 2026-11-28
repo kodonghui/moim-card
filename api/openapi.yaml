@@ -2846,7 +2846,8 @@ components:
         gatheringName:
           type: string
           minLength: 1
-          maxLength: 20
+          maxLength: 40
+          x-normalized-max-length: 20
           pattern: ^[^\x00-\x1F\x7F]+$
           description: rooms.gathering_name. 앞뒤 공백을 지운 뒤 1~20자
         partySize:
@@ -2857,7 +2858,8 @@ components:
         hostNickname:
           type: string
           minLength: 1
-          maxLength: 10
+          maxLength: 30
+          x-normalized-max-length: 10
           pattern: ^[^\x00-\x1F\x7F]+$
           description: participants.nickname. 앞뒤 공백을 지운 뒤 1~10자, 금칙어 없음(SPEC-008)
     CreatedRoom:
@@ -2940,9 +2942,10 @@ components:
         nickname:
           type: string
           minLength: 1
-          maxLength: 10
+          maxLength: 30
+          x-normalized-max-length: 10
           pattern: ^[^\x00-\x1F\x7F]+$
-          description: participants.nickname(SPEC-008)
+          description: participants.nickname. 앞뒤 공백을 지운 뒤 1~10자(SPEC-008)
     JoinResult:
       type: object
       required:
