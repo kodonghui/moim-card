@@ -339,7 +339,10 @@ for where, table, column, lo, hi in LIMITS:
     if schema_name == "PastCardPage":
         s = s["properties"]["pastCards"]["items"]
     prop = s["properties"][field]
-    got = (prop.get("minimum", prop.get("minLength")), prop.get("maximum", prop.get("maxLength")))
+    normalized = prop.get("x-normalized-max-length")
+    got = (prop.get("minimum", prop.get("minLength")), normalized if normalized is not None else prop.get("maximum", prop.get("maxLength")))
+    if normalized is not None:
+        check(prop.get("maxLength") == normalized + 20, f"원문 길이 여유 {where}: 정규화 뒤 {normalized}, 원문 {prop.get('maxLength')}")
     m = re.search(rf"\b{column}\s+\w+\s+NOT NULL[^\n]*?BETWEEN (\d+) AND (\d+)", schema_sql.split(f"CREATE TABLE {table} (")[1].split(") STRICT;")[0])
     col = (int(m.group(1)), int(m.group(2))) if m else None
     check(got == (lo, hi) == col, f"한계 {where} {got} = {table}.{column} {col}")
