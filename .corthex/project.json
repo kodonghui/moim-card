@@ -27,6 +27,18 @@
       "source": "api/openapi.yaml",
       "truth": "source",
       "note": "2026-11-28: on_nexus 프로젝트라 기본 human view인 NEXUS의 operation 목록을 써요. 계약 보기는 Swagger UI나 Prism 목 서버(prism mock api/openapi.yaml)로 같은 파일을 열어요. 검사는 python3 scripts/check-contract.py예요."
+    },
+    "07-sitemap": {
+      "human": "nexus",
+      "source": "docs/07-sitemap/sitemap.yaml",
+      "truth": "source",
+      "note": "2026-11-28: on_nexus 프로젝트라 기본 human view인 NEXUS의 사이트맵 그림(sitemap.yaml에서 그림)을 써요. 저장소 안 보기 세 개(보드·목록·슬라이드)는 docs/07-sitemap/sitemap.html이고 scripts/draw-screens.py가 YAML에서 그려요."
+    },
+    "08-screen-states": {
+      "human": "nexus",
+      "source": "docs/08-screens/",
+      "truth": "source",
+      "note": "2026-11-28: on_nexus 프로젝트라 기본 human view인 NEXUS의 화면·상태 목록을 써요. 회색 와이어프레임은 docs/08-screens/wireframes.html(scripts/draw-screens.py가 그림), 검사는 python3 scripts/check-screens.py예요."
     }
   }
 }

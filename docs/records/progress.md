@@ -1,5 +1,13 @@
 # 진행 기록
 
+### 2026-11-28 · 07 사이트맵과 08 화면 정의 초안, 09 목업 준비
+
+- Done: `corthex-screen`으로 07 사이트맵([sitemap.yaml](../07-sitemap/sitemap.yaml), SCR-001~015)과 08 화면 정의([08-screens](../08-screens/README.md), 화면 15개, 상태 70개, 공통 처리 G-1~G-10)를 썼어요. 03 흐름 16개의 단계 표에 SCR 칸을 더했어요(단계 161개, 뜻 바뀜 없음). 보기와 와이어프레임을 그리는 [scripts/draw-screens.py](../../scripts/draw-screens.py)와 연결 검사 [scripts/check-screens.py](../../scripts/check-screens.py)를 더했어요. 체크포인트 질문은 [checkpoint-07.md](../07-sitemap/checkpoint-07.md)(질문 1개)와 [checkpoint-08.md](../08-screens/checkpoint-08.md)(질문 2개)에, AI가 정한 것은 DEC-026(proposed)에 있어요. 09 목업은 만들지 않고 사용자님 질문 두 개를 [09-mockup/prep.md](../09-mockup/prep.md)에 준비했어요. `.corthex/project.json`에 07·08 단계 설정(human `nexus`, truth `source`)을 더했어요.
+- Why: 05·06 통과(DEC-022~025) 뒤 다음 단계예요. 토링이 작업 지시(2026-11-28, Orca 작업 task_d7a9eefc6d8d).
+- Result: 08을 쓰다 승인된 흐름 문장 하나를 바꾸자는 제안이 나왔어요: FL-012 "지워졌어요 안내"대로 처음 화면에 자동으로 가면 지운 직후 사용자 ID가 다시 생겨요(08 질문 2). 01 도메인 설계는 바꾸지 않았어요.
+- Checked: `python3 scripts/check-screens.py` 통과 1490·실패 0. Orca 내장 브라우저로 sitemap.html(390px, 가로 넘침 없음)과 와이어프레임 4개 상태(SCR-007#normal·#loading, SCR-009#confirm-close, SCR-010#normal)를 360px·430px로 봤어요. 360px에서 한국어 단어 끊김을 찾아 `word-break: keep-all`로 고쳤어요. 나머지 66개 상태는 눈으로 보지 않았어요. 이 기기의 headless Chromium은 시스템 라이브러리가 없어 쓰지 못했어요. term-check와 hub 결과는 PR 본문에 적어요.
+- Next: 토링이가 07 질문 1, 08 질문 1·2의 답(오랑이 위임)을 받아 줌 → DEC-027부터 기록하고 통과 → PR 병합(토링이) → `push moim-card` → 사용자님께 09 질문 두 개.
+
 ### 2026-11-28 · 05·06 체크포인트 답 기록과 통과
 
 - Done: 토링이가 전한 오랑이 답(사용자님 위임, 근거 2026-11-23 "추천 모두 승인", 2026-11-27 "DDD랑 목업때만")을 DEC-022(05 질문 1, 스키마 고정), DEC-023(06 질문 1, 계약 승인), DEC-024(06 질문 2, 마지막 응답의 알림도 보냄), DEC-025(06 질문 3, 내 방 목록에 방 코드, 조건: 기기 로그에 남기지 않음)로 기록하고 DEC-021을 in force로 바꿨어요. 결정된 문장과 상태 칸만 고쳤어요: SPEC-025(마지막 응답 발송 문장), SPEC-026 [동시성](다른 요청의 발송으로 좁힘), SPEC-039 [노출](화면에 없음, 기기 로그 금지), API-007·API-012 설명의 `Open:`, 체크포인트 두 파일의 상태 줄과 답, erd.md·api.md 상태 줄. `.corthex/stages.json`의 05·06을 `done`으로 바꾸고 체크포인트를 적었어요.
