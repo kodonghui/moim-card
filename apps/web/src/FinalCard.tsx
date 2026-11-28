@@ -1,6 +1,7 @@
 import React from 'react';
 import { Button } from '@toss/tds-mobile';
 import { AgreementCard, type CardData } from './AgreementCard';
+import { SaveCardButton } from './SaveCardButton';
 import { ApiError } from './api';
 import { entryContext } from './entry-context';
 import { navigate } from './routes';
@@ -8,6 +9,7 @@ import { roomContext } from './room-context';
 import { client, sessionState } from './session';
 type Room = { gatheringName: string; theme: { name: string }; status: 'open' | 'closed'; mySubmitted: boolean };
 export function FinalCard() {
+  const cardRef = React.useRef<HTMLElement>(null);
   const [card, setCard] = React.useState<CardData>(); const [room, setRoom] = React.useState<Room>(); const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string>(); const [permission, setPermission] = React.useState(false); const [missing, setMissing] = React.useState(false);
   const code = entryContext.room; const path = `/v1/rooms/${encodeURIComponent(code || '')}`;
@@ -32,8 +34,8 @@ export function FinalCard() {
   return <main className="create">{roomContext.closedNotice && <p>방이 마감됐어요</p>}
     {error !== undefined && <div role="alert"><p>잠시 뒤 다시 해 주세요</p>{error && <p>오류 번호 {error}</p>}<button className="link-button" onClick={() => void load()}>다시 시도</button></div>}
     {!card && loading && <div className="skeletons" role="status"><span /><span /><span /><span className="sr-only">불러오고 있어요</span></div>}
-    {room && card && <>{card.stage === 'none' ? <h1>답한 사람이 적어 카드 없이 마감됐어요</h1> : <AgreementCard card={card} name={room.gatheringName} theme={room.theme.name} />}
-      {room.mySubmitted && card.stage === 'final' && <><div className="card-actions"><Button display="block" disabled>카드 저장</Button><Button display="block" disabled>단톡방에 보내기</Button></div><button className="link-button" onClick={() => navigate('/room/result')}>내 모임 성향 다시 보기</button></>}
+    {room && card && <>{card.stage === 'none' ? <h1>답한 사람이 적어 카드 없이 마감됐어요</h1> : <AgreementCard ref={cardRef} card={card} name={room.gatheringName} theme={room.theme.name} />}
+      {room.mySubmitted && card.stage === 'final' && <><div className="card-actions"><SaveCardButton cardRef={cardRef} /><Button display="block" disabled>단톡방에 보내기</Button></div><button className="link-button" onClick={() => navigate('/room/result')}>내 모임 성향 다시 보기</button></>}
       <div className="create-action"><Button display="block" onClick={() => navigate('/rooms/new')}>우리도 해 보기</Button></div></>}
   </main>;
 }
