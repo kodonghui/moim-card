@@ -10,29 +10,9 @@
       ]
     }
   },
-  "modifiers": {
-    "candidate": {
-      "contexts": {
-        "a": [
-          {
-            "$ref": "candidate-a.tokens.json"
-          }
-        ],
-        "b": [
-          {
-            "$ref": "candidate-b.tokens.json"
-          }
-        ]
-      },
-      "default": "a"
-    }
-  },
   "resolutionOrder": [
     {
       "$ref": "#/sets/base"
-    },
-    {
-      "$ref": "#/modifiers/candidate"
     }
   ]
 }

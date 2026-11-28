@@ -6,6 +6,7 @@
 - 화면 하나에 파일 하나예요(`SCR-001.md` …). 파일마다 목적, 데이터와 출처 API, 동작(결과·실패), 상태, 응답과 상태, 경우의 종류, 규칙이 있어요.
 - 상태 ID는 `SCR-002#empty`처럼 써요. 기본 상태는 normal(정상) · loading(불러오는 중) · empty(빈) · error(오류) · permission(권한) · stale(오래된 데이터)이고, 화면마다 그 화면만의 상태를 더할 수 있어요(예: `SCR-001#update-required`). 맞지 않는 기본 상태는 "해당하지 않는 상태"에 이유를 적어요.
 - 화면 코드를 바꾸기 전에 이 정의를 먼저 고쳐요. 검사는 `python3 scripts/check-screens.py`예요.
+- 09 목업: [design/mockups/mockup.html](../../design/mockups/mockup.html)(화면 15개, 상태 70개, 360·430px, 누를 수 있음). 화면 파일마다 "목업" 절에 목업에서 정한 배치와 문구가 있어요(DEC-033, DEC-034).
 
 ## 1. 모든 화면에 걸리는 규칙 (G-1~G-10)
 

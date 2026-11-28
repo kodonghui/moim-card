@@ -1,5 +1,5 @@
 {
-  "$description": "모임 합의 카드(가칭) 09 목업의 공통 토큰. 시안 A·B가 같이 쓰는 회색·글자·간격·글꼴. 시안마다 다른 값은 candidate-a/b.tokens.json에 있어요. 바탕은 TDS(DEC-030)이고, 실제 구현에서 TDS 컴포넌트가 그리는 부분은 TDS 값을 따라요.",
+  "$description": "모임 합의 카드(가칭) 디자인 토큰(09). 방향: 시안 A 바탕(흰 바탕, 파란 버튼, TDS 배치)에 합의 카드만 시안 B의 카드 한 장 모양(DEC-033). 주황·초록·회청색은 card 그룹에만 있고 합의 카드 안에서만 써요. 실제 구현에서 TDS 컴포넌트가 그리는 부분은 TDS 값을 따라요(DEC-030).",
   "color": {
     "bg": {
       "page": {
@@ -93,6 +93,63 @@
           ],
           "hex": "#E5E8EB"
         }
+      }
+    },
+    "accent": {
+      "default": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.1059,
+            0.3922,
+            0.8549
+          ],
+          "hex": "#1B64DA"
+        }
+      },
+      "pressed": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.0824,
+            0.3137,
+            0.6902
+          ],
+          "hex": "#1550B0"
+        }
+      },
+      "subtle": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.9098,
+            0.9529,
+            1.0
+          ],
+          "hex": "#E8F3FF"
+        }
+      },
+      "on-subtle": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.1059,
+            0.3922,
+            0.8549
+          ],
+          "hex": "#1B64DA"
+        }
+      }
+    },
+    "focus": {
+      "$value": {
+        "colorSpace": "srgb",
+        "components": [
+          0.1059,
+          0.3922,
+          0.8549
+        ],
+        "hex": "#1B64DA"
       }
     },
     "disabled": {
@@ -190,6 +247,98 @@
         }
       }
     },
+    "card": {
+      "surface": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "hex": "#FFFFFF"
+        }
+      },
+      "header": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            1.0,
+            0.9725,
+            0.9451
+          ],
+          "hex": "#FFF8F1"
+        }
+      },
+      "border": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.9098,
+            0.8353,
+            0.7608
+          ],
+          "hex": "#E8D5C2"
+        }
+      },
+      "next-bg": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            1.0,
+            0.9451,
+            0.898
+          ],
+          "hex": "#FFF1E5"
+        }
+      },
+      "next-label": {
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [
+            0.6039,
+            0.2039,
+            0.0706
+          ],
+          "hex": "#9A3412"
+        }
+      },
+      "category": {
+        "split": {
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.7608,
+              0.2549,
+              0.0471
+            ],
+            "hex": "#C2410C"
+          }
+        },
+        "agreed": {
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.0824,
+              0.502,
+              0.2392
+            ],
+            "hex": "#15803D"
+          }
+        },
+        "open": {
+          "$value": {
+            "colorSpace": "srgb",
+            "components": [
+              0.2784,
+              0.3333,
+              0.4118
+            ],
+            "hex": "#475569"
+          }
+        }
+      }
+    },
     "$type": "color"
   },
   "space": {
@@ -259,6 +408,39 @@
     "nav": {
       "$value": {
         "value": 48,
+        "unit": "px"
+      }
+    },
+    "$type": "dimension"
+  },
+  "radius": {
+    "button": {
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      }
+    },
+    "box": {
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      }
+    },
+    "card": {
+      "$value": {
+        "value": 20,
+        "unit": "px"
+      }
+    },
+    "chip": {
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      }
+    },
+    "pill": {
+      "$value": {
+        "value": 999,
         "unit": "px"
       }
     },

@@ -1,5 +1,13 @@
 # 진행 기록
 
+### 2026-11-28 · 09 목업: A 바탕 + 카드만 B로 화면 15개
+
+- Done: 사용자님 답(Orca 항목 256, e4535) "A 바탕 + 카드만 B(추천)"을 DEC-033으로, "방장 화면 버튼 3개 이대로"를 DEC-034로 기록했어요. 토큰을 `design/base.tokens.json` 한 벌로 합치고 합의 카드 색을 `color.card` 그룹에 뒀어요(시안별 토큰 파일과 시안 페이지는 지우고 캡처는 captures/candidates/에 남김). [scripts/draw-mockups.py](../../scripts/draw-mockups.py)를 다시 써서 08 상태 표에서 상태 목록을 읽어 화면 15개·상태 70개를 [design/mockups/mockup.html](../../design/mockups/mockup.html)에 그렸어요. 08 화면 정의 15개에 "목업" 절(목업 링크, 정한 배치와 문구)을 더했어요. 캡처 세 장을 [design/mockups/captures/](../../design/mockups/captures/)에 뒀어요. 사용자님 최종 확인 질문은 [09-mockup/README.md](../09-mockup/README.md) 3절이에요.
+- Why: 사용자님 답. 토링이 작업 지시(2026-11-28, Orca 작업 task_893835285720).
+- Result: 홈·문항은 시안 A 그대로, 합의 카드·최종 카드·지난 카드 자세히는 카드 한 장 모양이에요. DEC-032(AI 제안)를 08과 목업에 반영했고, 확정은 최종 확인 답을 기다려요.
+- Checked: `tokens.py check` 색 29개·토큰 밖 0. page-check.js 292번(상태 70 × 360·430px × 보통·가장 긴 글자, 그리고 참여자·처음 온 사람 보기 12번) 오류 0·경고 0·참고 0. 대비는 손으로 계산해 모두 기준 이상. 스크립트로 누르기 23개 통과, 카드 색이 카드 밖에 쓰인 요소 0개. `scripts/check-screens.py` 통과 1490·실패 0. 눈으로 본 것은 캡처 세 장(정상 상태 15개 화면, 360px)이고 나머지 상태와 430px은 숫자로만 쟀어요. 키보드 순서·스크린 리더·실제 토스 WebView는 재지 않았어요.
+- Next: 사용자님 최종 확인 → 통과 기록(토큰 고정) → 10 WBS.
+
 ### 2026-11-28 · 09 목업 시안 A·B (세 화면)
 
 - Done: 사용자님 답 "A·B 두 시안, 세 화면만(추천)"(Orca 항목 256, e4475)을 DEC-031로 기록하고, `corthex-screen`·`corthex-uxui`로 시안 A(토스처럼 깔끔하게)와 B(모임 카드처럼 따뜻하게)를 SCR-002 홈, SCR-007 문항, SCR-009 합의 카드에 상태 18개씩, 360·430px로 누를 수 있는 HTML로 만들었어요([design/mockups/](../../design/mockups/), 그리기 [scripts/draw-mockups.py](../../scripts/draw-mockups.py)). 토큰은 [design/](../../design/)의 base·candidate-a·candidate-b·resolver예요(DEC-030). 캡처 두 장을 [design/mockups/captures/](../../design/mockups/captures/)에 뒀어요. 방장 화면의 버튼 수·문구 길이를 화면마다 아래에 보이게 했어요(DEC-028 요청). AI가 정한 것은 DEC-032(proposed).

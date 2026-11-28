@@ -44,7 +44,8 @@
       "human": "nexus",
       "source": "design/base.tokens.json",
       "truth": "source",
-      "note": "2026-11-28: on_nexus 프로젝트라 NEXUS에 단계 기록·질문을 두고, 시안은 저장소 안 HTML(design/mockups/candidate-a.html, candidate-b.html, scripts/draw-mockups.py가 토큰에서 그림)로 봐요. Figma·Claude Design은 쓰지 않았어요. 바탕은 CORTHEX 기본(Carbon)이 아니라 이 앱의 토큰이에요(DEC-030). 방향을 고르면 page 설정에 고른 목업을 적어요."
+      "note": "2026-11-28: on_nexus 프로젝트라 NEXUS에 단계 기록·질문을 두고, 목업은 저장소 안 HTML design/mockups/mockup.html(scripts/draw-mockups.py가 토큰과 08 상태 표에서 그림)로 봐요. Figma·Claude Design은 쓰지 않았어요. 바탕은 CORTHEX 기본(Carbon)이 아니라 이 앱의 토큰이에요(DEC-030). 방향은 A 바탕 + 합의 카드만 B(DEC-033).",
+      "page": "design/mockups/mockup.html"
     }
   }
 }
