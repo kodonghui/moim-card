@@ -70,10 +70,10 @@ export function Questions() {
   }
   if (permission) return <main className="entry"><section className="entry-content"><h1>지금은 쓸 수 없어요</h1></section></main>;
   if (missing) return <main className="create"><h1>이 방은 없거나 보관 기간이 지났어요</h1><Button display="block" onClick={() => navigate('/rooms/new')}>방 만들기</Button></main>;
-  return <main className="questions"><header><h1>8개 중 {count}개 골랐어요</h1></header>
+  return <main className="questions"><header><h1>8개 중 {count}개 골랐어요</h1>{roomContext.nicknameRoom === entryContext.room && roomContext.nickname && <p>{roomContext.nickname} 님으로 참여 중</p>}</header>
     {error !== undefined && <div role="alert"><p>{questions ? '제출하지 못했어요. 고른 답은 그대로예요' : '잠시 뒤 다시 해 주세요'}</p>{error && <p>오류 번호 {error}</p>}{!questions && <button className="link-button" onClick={() => void load()}>다시 시도</button>}</div>}
     {!questions && loading && <div className="skeletons" role="status"><span /><span /><span /><span className="sr-only">불러오고 있어요</span></div>}
     {questions?.map(q => <fieldset disabled={saving} key={q.position} id={`question-${q.position}`}><legend>{q.position}. {q.prompt}</legend>{invalidPosition === q.position && <p role="alert">아직 고르지 않았어요</p>}{([['A', q.optionA], ['B', q.optionB], ['none', '상관없어요']] as const).map(([choice, label]) => <button type="button" className="choice" aria-pressed={answers[q.position] === choice} key={choice} onClick={() => choose(q.position, choice)}>{label}</button>)}</fieldset>)}
-    {questions && <div className="create-action"><p>{8 - count}개 남았어요</p>{count < 8 && <button className="link-button" onClick={() => { const position = questions.find(q => !answers[q.position])?.position; setInvalidPosition(position); document.getElementById(`question-${position}`)?.scrollIntoView(); }}>남은 문항으로 가기</button>}<Button display="block" loading={saving} disabled={count !== 8 || saving || seconds > 0} onClick={() => void submit()}>{seconds ? `다시 시도 (${seconds}초)` : '제출하기'}</Button></div>}
+    {questions && <div className="create-action"><p>{8 - count}개 남았어요</p>{count < 8 && <button className="link-button" onClick={() => { const position = questions.find(q => !answers[q.position])?.position; setInvalidPosition(position); document.getElementById(`question-${position}`)?.scrollIntoView(); }}>남은 문항으로 가기</button>}<Button display="block" loading={saving} disabled={count !== 8 || saving || seconds > 0} onClick={() => void submit()}>{seconds ? `다시 시도 (${seconds}초)` : error !== undefined ? '다시 시도' : '제출하기'}</Button></div>}
   </main>;
 }

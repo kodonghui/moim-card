@@ -32,7 +32,7 @@ async function chooseAll(page: Page) {
 }
 test('Prism 문항 여덟 개와 빠진 문항 안내', async ({ page }) => {
   await prism(page, 'questions', [{ code: 200, example: 'travel-v1' }]); await enter(page);
-  await expect(page.locator('.questions fieldset')).toHaveCount(8); await page.getByRole('button', { name: '남은 문항으로 가기' }).click();
+  await expect(page.locator('.questions fieldset')).toHaveCount(8); await expect(page.getByText('바다 님으로 참여 중')).toBeVisible(); await page.getByRole('button', { name: '남은 문항으로 가기' }).click();
   await expect(page.locator('#question-1').getByText('아직 고르지 않았어요')).toBeVisible();
   await page.locator('#question-1 button').first().click(); await expect(page.getByText('아직 고르지 않았어요')).toHaveCount(0);
 });
@@ -56,7 +56,7 @@ test('제출 입력 오류가 서버가 지정한 문항에 표시된다', async
 test('제출 실패 뒤 답과 요청 ID를 보존한다', async ({ page }) => {
   await prism(page, 'questions', [{ code: 200, example: 'travel-v1' }]); const keys = await prism(page, 'responses', [{ code: 500 }, { code: 201, example: 'solo-first' }]);
   await enter(page); await chooseAll(page); await page.getByRole('button', { name: '제출하기' }).click();
-  await expect(page.getByText('제출하지 못했어요. 고른 답은 그대로예요')).toBeVisible(); await page.getByRole('button', { name: '제출하기' }).click();
+  await expect(page.getByText('제출하지 못했어요. 고른 답은 그대로예요')).toBeVisible(); await page.getByRole('button', { name: '다시 시도' }).click();
   await expect(page).toHaveURL(/\/room\/result$/); expect(keys()).toHaveLength(2); expect(keys()[0]).toBe(keys()[1]);
 });
 for (const [example, target] of [['room-closed', 'final'], ['already-submitted', 'result']] as const) test(`제출 ${example} 이동`, async ({ page }) => {
@@ -81,6 +81,6 @@ test('제출 중 시간 초과 뒤 같은 요청 ID로 재시도한다', async (
   const keys = await prism(page, 'responses', [{ code: 201, example: 'solo-first', delay: 11000 }, { code: 201, example: 'solo-first' }]);
   await enter(page); await chooseAll(page); await page.getByRole('button', { name: '제출하기' }).click();
   await expect(page.getByText('제출하지 못했어요. 고른 답은 그대로예요')).toBeVisible({ timeout: 15000 });
-  await page.getByRole('button', { name: '제출하기' }).click(); await expect(page).toHaveURL(/\/room\/result$/);
+  await page.getByRole('button', { name: '다시 시도' }).click(); await expect(page).toHaveURL(/\/room\/result$/);
   expect(keys()).toHaveLength(2); expect(keys()[0]).toBe(keys()[1]);
 });

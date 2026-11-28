@@ -51,7 +51,7 @@ export function JoinRoom() {
     setLoading(true); setError(undefined);
     try {
       operation.current ??= client.operation<{ mySubmitted: boolean }>(`${roomPath()}/participants`, { method: 'POST', idempotent: true, body: { nickname: valid.value } });
-      const result = await operation.current(); navigate(result.mySubmitted ? '/room/result' : '/room/questions', true);
+      const result = await operation.current(); roomContext.nickname = valid.value; roomContext.nicknameRoom = entryContext.room || undefined; navigate(result.mySubmitted ? '/room/result' : '/room/questions', true);
     } catch (err) {
       if (err instanceof ApiError && err.problem.code === 'origin_not_allowed') setState('permission');
       else if (err instanceof ApiError && err.problem.code === 'room_closed') { roomContext.closedNotice = true; navigate('/room/final', true); }
