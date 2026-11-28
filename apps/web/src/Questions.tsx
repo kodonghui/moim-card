@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@toss/tds-mobile';
+import { ShareButton } from './ShareButton';
 import { logInterimCard } from './analytics';
 import { ApiError } from './api';
 import { ANSWER_KEY_PREFIX, readAnswers, writeAnswers, removeAnswers } from './answer-storage';
@@ -76,6 +77,6 @@ export function Questions() {
     {error !== undefined && <div role="alert"><p>{questions ? '제출하지 못했어요. 고른 답은 그대로예요' : '잠시 뒤 다시 해 주세요'}</p>{error && <p>오류 번호 {error}</p>}{!questions && <button className="link-button" onClick={() => void load()}>다시 시도</button>}</div>}
     {!questions && loading && <div className="skeletons" role="status"><span /><span /><span /><span className="sr-only">불러오고 있어요</span></div>}
     {questions?.map(q => <fieldset disabled={saving} key={q.position} id={`question-${q.position}`}><legend>{q.position} / 8 · {q.prompt}</legend>{invalidPosition === q.position && <p role="alert">아직 고르지 않았어요</p>}{([['A', q.optionA], ['B', q.optionB], ['none', '상관없어요']] as const).map(([choice, label]) => <button type="button" className="choice" aria-pressed={answers[q.position] === choice} key={choice} onClick={() => choose(q.position, choice)}><span className="choice-dot" aria-hidden="true" /><span>{label}</span></button>)}</fieldset>)}
-    {questions && <div className="create-action"><p>{8 - count}개 남았어요</p>{count < 8 && <button className="link-button" onClick={() => { const position = questions.find(q => !answers[q.position])?.position; setInvalidPosition(position); document.getElementById(`question-${position}`)?.scrollIntoView(); }}>남은 문항으로 가기</button>}<Button display="block" loading={saving} disabled={count !== 8 || saving || seconds > 0} onClick={() => void submit()}>{seconds ? `다시 시도 (${seconds}초)` : error !== undefined ? '다시 시도' : '제출하기'}</Button></div>}
+    {questions && <div className="create-action">{roomContext.role === 'host' && <ShareButton label="친구 부르기" />}<p>{8 - count}개 남았어요</p>{count < 8 && <button className="link-button" onClick={() => { const position = questions.find(q => !answers[q.position])?.position; setInvalidPosition(position); document.getElementById(`question-${position}`)?.scrollIntoView(); }}>남은 문항으로 가기</button>}<Button display="block" loading={saving} disabled={count !== 8 || saving || seconds > 0} onClick={() => void submit()}>{seconds ? `다시 시도 (${seconds}초)` : error !== undefined ? '다시 시도' : '제출하기'}</Button></div>}
   </main>;
 }

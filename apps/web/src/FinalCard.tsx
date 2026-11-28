@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@toss/tds-mobile';
+import { ShareButton } from './ShareButton';
 import { AgreementCard, type CardData } from './AgreementCard';
 import { SaveCardButton } from './SaveCardButton';
 import { ApiError } from './api';
@@ -35,7 +36,7 @@ export function FinalCard() {
     {error !== undefined && <div role="alert"><p>잠시 뒤 다시 해 주세요</p>{error && <p>오류 번호 {error}</p>}<button className="link-button" onClick={() => void load()}>다시 시도</button></div>}
     {!card && loading && <div className="skeletons" role="status"><span /><span /><span /><span className="sr-only">불러오고 있어요</span></div>}
     {room && card && <>{card.stage === 'none' ? <h1>답한 사람이 적어 카드 없이 마감됐어요</h1> : <AgreementCard ref={cardRef} card={card} name={room.gatheringName} theme={room.theme.name} />}
-      {room.mySubmitted && card.stage === 'final' && <><div className="card-actions"><SaveCardButton cardRef={cardRef} /><Button display="block" disabled>단톡방에 보내기</Button></div><button className="link-button" onClick={() => navigate('/room/result')}>내 모임 성향 다시 보기</button></>}
+      {room.mySubmitted && card.stage === 'final' && <><div className="card-actions"><SaveCardButton cardRef={cardRef} /><ShareButton label="단톡방에 보내기" /></div><button className="link-button" onClick={() => navigate('/room/result')}>내 모임 성향 다시 보기</button></>}
       <div className="create-action"><Button display="block" onClick={() => navigate('/rooms/new')}>우리도 해 보기</Button></div></>}
   </main>;
 }

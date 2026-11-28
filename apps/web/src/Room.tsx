@@ -20,7 +20,7 @@ export function RoomIntro() {
     const timer = hasRoom ? undefined : setTimeout(() => setLoading(true), 1000);
     try {
       const data = await client.operation<RoomView>(roomPath())();
-      roomContext.name = data.gatheringName;
+      roomContext.name = data.gatheringName; roomContext.role = data.myRole;
       if (data.status === 'closed') navigate('/room/final', true);
       else if (data.myRole !== 'none') navigate(data.mySubmitted ? roomContext.origin === 'invite' ? '/room/result' : '/room/card' : '/room/questions', true);
       else { roomRef.current = data; setRoom(data); }
@@ -42,7 +42,7 @@ export function RoomIntro() {
 export function JoinRoom() {
   const [nickname, setNickname] = React.useState(''); const [fieldError, setFieldError] = React.useState(false); const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string>(); const [state, setState] = React.useState<'normal' | 'permission' | 'full' | 'missing'>('normal'); const [seconds, setSeconds] = React.useState(0);
-  const operation = React.useRef<(() => Promise<{ mySubmitted: boolean }>)>(); const valid = validateNickname(nickname);
+  const operation = React.useRef<(() => Promise<{ mySubmitted: boolean; myRole: 'host' | 'member' }>)>(); const valid = validateNickname(nickname);
   React.useEffect(() => { if (!entryContext.room || !roomContext.name) navigate('/room', true); }, []);
   React.useEffect(() => { operation.current = undefined; }, [nickname]);
   React.useEffect(() => { if (!seconds) return; const timer = setTimeout(() => setSeconds(s => Math.max(0, s - 1)), 1000); return () => clearTimeout(timer); }, [seconds]);
@@ -50,8 +50,8 @@ export function JoinRoom() {
     if (!valid.valid || loading || seconds) return;
     setLoading(true); setError(undefined);
     try {
-      operation.current ??= client.operation<{ mySubmitted: boolean }>(`${roomPath()}/participants`, { method: 'POST', idempotent: true, body: { nickname: valid.value } });
-      const result = await operation.current(); roomContext.nickname = valid.value; roomContext.nicknameRoom = entryContext.room || undefined; navigate(result.mySubmitted ? '/room/result' : '/room/questions', true);
+      operation.current ??= client.operation<{ mySubmitted: boolean; myRole: 'host' | 'member' }>(`${roomPath()}/participants`, { method: 'POST', idempotent: true, body: { nickname: valid.value } });
+      const result = await operation.current(); roomContext.role = result.myRole; roomContext.nickname = valid.value; roomContext.nicknameRoom = entryContext.room || undefined; navigate(result.mySubmitted ? '/room/result' : '/room/questions', true);
     } catch (err) {
       if (err instanceof ApiError && err.problem.code === 'origin_not_allowed') setState('permission');
       else if (err instanceof ApiError && err.problem.code === 'room_closed') { roomContext.closedNotice = true; navigate('/room/final', true); }
