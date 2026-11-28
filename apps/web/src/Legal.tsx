@@ -20,6 +20,6 @@ export function Privacy() {
     <section><h2>앱 이용 통계</h2><p>앱 이용 통계를 토스에 보내며, 토스가 미니앱별 익명 키를 함께 기록해요</p></section>
     <section><h2>지우는 방법</h2><p>내 데이터 지우기에서 확인한 뒤 사용자 ID, 닉네임, 응답, 알림 신청과 지난 카드를 지울 수 있어요. 이미 확정된 최종 카드의 이름 없는 수는 남아요.</p></section>
     <section><h2>운영자</h2><p>{operator}</p><p>{contact}</p></section>
-    <div className="create-action"><Button display="block" onClick={() => navigate('/me/delete')}>내 데이터 지우기로 가기</Button></div>
+    <Button display="block" onClick={() => navigate('/me/delete')}>내 데이터 지우기로 가기</Button>
   </main>;
 }
