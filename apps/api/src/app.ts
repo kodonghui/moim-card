@@ -1,7 +1,8 @@
-import { Hono } from 'hono';
+import { Hono, type MiddlewareHandler } from 'hono';
 import { errorCatalog, type ErrorCode } from './errors';
 
-type Route = { method: string; path: string; handler: (request: Request) => Response | Promise<Response> };
+type ApiEnv = {Variables: {userId: string}};
+type Route = { method: string; path: string; middleware?: MiddlewareHandler<ApiEnv>; handler: (request: Request) => Response | Promise<Response> };
 type Log = (entry: { traceId: string; code: ErrorCode; user?: string }) => void;
 
 /** User identifiers are hashed before logging, and raw request data is never accepted. */
@@ -26,7 +27,7 @@ export function problemResponse(code: ErrorCode, log: Log = entry => console.err
 }
 
 export function createApi(origins: readonly [string, string], routes: Route[] = [], log: Log = entry => console.error(JSON.stringify(entry))) {
-  const app = new Hono();
+  const app = new Hono<ApiEnv>();
   const problem = (code: ErrorCode, headers: Record<string, string> = {}) => problemResponse(code, log, headers);
   app.use('*', async (c, next) => {
     const origin = c.req.header('Origin');
@@ -42,7 +43,10 @@ export function createApi(origins: readonly [string, string], routes: Route[] = 
     c.header('Access-Control-Expose-Headers', 'Retry-After');
     c.header('Vary', 'Origin');
   });
-  for (const route of routes) app.on(route.method.toUpperCase(), route.path, c => route.handler(c.req.raw));
+  for (const route of routes) {
+    if (route.middleware) app.on(route.method.toUpperCase(), route.path, route.middleware, c => route.handler(c.req.raw));
+    else app.on(route.method.toUpperCase(), route.path, c => route.handler(c.req.raw));
+  }
   app.notFound(c => {
     const allowed = [...new Set(routes.filter(route => matches(route.path, c.req.path)).map(route => route.method.toUpperCase()))];
     return allowed.length ? problem('method_not_allowed', { Allow: allowed.join(', ') }) : problem('route_not_found');
