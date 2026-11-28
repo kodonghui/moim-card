@@ -1,0 +1,144 @@
+# 모임 합의 카드(가칭): WBS (10)
+
+상태: **초안, 체크포인트 대기**(2026-11-28) · 체크포인트 질문: [checkpoint-10.md](checkpoint-10.md) · 검사: `python3 scripts/check-wbs.py`
+
+- 입력: [04 기능 명세](../04-functional-spec/spec.md)(SPEC-001~039, 공통 규칙 C-1~C-10, 확인할 사실 F-1~F-7), [06 API 계약](../../api/openapi.yaml)(API-001~016), [05 스키마](../../db/schema.sql)(TBL-001~015), [07 사이트맵](../07-sitemap/sitemap.yaml)·[08 화면 정의](../08-screens/README.md)(SCR-001~015, 상태 70개), [09 목업](../../design/mockups/mockup.html)과 고정 토큰 `design/base.tokens.json`(DEC-035). 모두 main `f1963b5` 기준이에요.
+- 진실의 원천은 이 파일이에요(`truth: source`). NEXUS는 병합·push 뒤 이 표를 TASK 목록으로 보여 줘요.
+- TASK 하나는 PR 하나예요. PR 제목이나 본문에 TASK ID와 SPEC ID를 적어요(11 개발 단계).
+- **크기**: Codex 작업자 1명 기준으로 S는 반나절 안, M은 하루, L은 이틀이에요. 이틀을 넘는 일은 TASK를 나눴어요.
+- **담당**: `Codex`는 구현 작업자(gpt-6.1-terra xhigh), `사용자님`은 사용자님만 할 수 있는 일이에요. 리뷰와 병합은 토링이가 해요(저장소 규칙).
+- **완료**: 완료 조건을 다른 사람이 확인할 수 있어야 끝이에요. API operation을 건드리는 TASK는 그 operation이 목록에 둔 응답마다 테스트가 통과해야 끝이에요. 화면 TASK는 목 서버(`prism mock api/openapi.yaml`)로 끝내고, 실제 서버 연결은 TASK-051에서 operation마다 "accepted"로 기록해요.
+- 이 WBS는 요구사항·흐름·SPEC 행을 더하거나 빼거나 바꾸지 않아요. 만들다가 그런 일이 나오면 변경 절차(01부터)로 해요.
+
+## 1. 페이즈와 순서
+
+페이즈(phase)는 의존으로 나눈 순서예요. 페이즈 1(서버)과 페이즈 2(화면)는 둘 다 페이즈 0의 TASK-001 뒤에 같이 진행할 수 있어요(화면은 목 서버를 써요). 페이즈 3은 사용자님 일(U-1·U-2·U-6)을 기다려요.
+
+| 페이즈 | TASK | 무엇 | 외부 의존 |
+| --- | --- | --- | --- |
+| 0 기반 | TASK-001~012 | 저장소 뼈대, D1 하네스, 공통 층(오류·세션·요청 ID·한도), 공용 규칙과 계산, 토스 API 클라이언트(가짜 서버), 문항 세트 형식 | 없음 |
+| 1 서버 | TASK-013~034 | operation 16개, 알림 발송·방 만료 작업, 문항 세트 세 개, 로컬 계약 테스트 | 없음(토스는 가짜 서버) |
+| 2 화면 | TASK-035~049 | 웹 뼈대, 공통 처리 G-1~G-10, 화면 15개 | 없음(목 서버) |
+| 3 연결·확인 | TASK-050~054 | 스테이징, 번들과 실제 서버 연결, 접근성 자동 검사, 실기기 QR 확인, 성능 | U-1, U-2, U-3, U-6 |
+
+**첫 개발 페이즈(페이즈 0)**: TASK-001을 먼저 하나 내고, 병합 뒤 TASK-002·003·004·008·009·010·012를 같이, 그 뒤 TASK-005·006·007, 마지막에 TASK-011이에요. 외부 계정·콘솔·사용자님 일이 하나도 없어요.
+
+가장 긴 의존 사슬(TASK 12개, 크기 합 약 13.5작업일): TASK-001 → 003 → 005 → 017 → 019 → 021 → 022 → 029 → 034 → 050 → 051 → 053. TASK-050은 U-1·U-2를 기다려서, 사용자님 일이 늦으면 이 사슬이 늘어나요.
+
+## 2. TASK
+
+| ID | 작업 | 페이즈 | SPEC | REQ(SPEC에서) | 건드리는 것(API·TBL·SCR) | 의존 | 담당 | 크기 | 완료 조건 | 상태 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| TASK-001 | 저장소 뼈대와 CI | 0 | SPEC-035 | REQ-064, REQ-065, REQ-066, REQ-075, REQ-076, REQ-077 | 저장소 전체(`apps/web`, `apps/api`, `packages/shared`, `content/`), GitHub Actions | 없음 | Codex | M | CI에서 `pnpm install`·`typecheck`·`test`·`build`와 기존 검사(`scripts/check-contract.py`, `scripts/check-screens.py`, `scripts/check-wbs.py`)가 통과해요. `.env`가 `git check-ignore`에 걸리고 비밀 값·계정 ID가 저장소에 0개예요. README에 명령이 있어요. | 할 일 |
+| TASK-002 | 빌드 검사 스크립트 | 0 | SPEC-034, SPEC-035 | REQ-062, REQ-063, REQ-064, REQ-065, REQ-066, REQ-075, REQ-076, REQ-077 | 빌드 결과, `package.json` | TASK-001 | Codex | S | `scripts/check-build.py`가 SDK 3.x(3.6.0 이상), `<iframe` 0건, 광고·결제 SDK 호출 0건, `eval`·`new Function` 0건, 다크 모드 색 바꿈 0건을 보고 CI에서 돌아요. 일부러 넣은 위반 예시 하나마다 실패해요. | 할 일 |
+| TASK-003 | D1 테스트 하네스와 트랜잭션 도우미 | 0 | C-4, C-8, SPEC-011, SPEC-015 | REQ-007, REQ-011, REQ-012, REQ-013, REQ-017, REQ-018, REQ-025 | TBL-001~TBL-015, `db/migrations/0001_init.sql` | TASK-001 | Codex | M | Vitest + Workers 풀(로컬 D1)에서 테스트마다 `0001_init.sql`을 적용한 빈 DB가 생겨요. `db.batch` 도우미와 조건을 건 UPDATE로 "먼저 커밋한 요청이 이김"을 보이는 예시 테스트가 통과해요. | 할 일 |
+| TASK-004 | API 공통 층(오류 모양, Origin, 로그) | 0 | SPEC-038, C-2, C-7 | REQ-069, REQ-070 | API-001~API-016 공통, `components.x-corthex.errors` | TASK-001 | Codex | M | `application/problem+json`(`code`는 오류 코드 22개 enum, `traceId`), 허용 Origin 2개 밖은 403 `origin_not_allowed`, 라우터 404·405(`Allow` 헤더)도 같은 모양, 서버 로그의 사용자는 해시 앞 8자뿐 — 각각 테스트가 통과해요. Origin 값은 설정으로 받아요(appName 전에는 테스트 값). | 할 일 |
+| TASK-005 | 세션 확인 미들웨어 | 0 | SPEC-002, C-1 | REQ-040, REQ-041, REQ-069, REQ-070 | TBL-002 | TASK-003, TASK-004 | Codex | S | Bearer 토큰 해시로 세션을 찾고, 없거나 12시간이 지났거나 지운 사용자면 401 `unauthenticated`예요. 토큰 원문이 D1·로그에 0개예요(테스트). | 할 일 |
+| TASK-006 | 요청 ID 층 | 0 | C-3, SPEC-005, SPEC-007, SPEC-011, SPEC-016, SPEC-024, SPEC-029 | REQ-001, REQ-002, REQ-003, REQ-004, REQ-005, REQ-006, REQ-007, REQ-008, REQ-009, REQ-011, REQ-012, REQ-013, REQ-017, REQ-018, REQ-025, REQ-033, REQ-043, REQ-044, REQ-045, REQ-048, REQ-049, REQ-058, REQ-061, REQ-082 | TBL-013, API-003·005·007·010·011·015 | TASK-003, TASK-004 | Codex | S | 같은 사용자·같은 `Idempotency-Key`면 24시간 동안 첫 결과, 다른 본문이면 409 `idempotency_conflict`, 401·429·5xx는 기록하지 않음(R-7), 헤더가 없으면 400 `invalid_request` — 테스트가 통과해요. | 할 일 |
+| TASK-007 | 요청 한도 층 | 0 | SPEC-038, C-6 | REQ-069, REQ-070 | TBL-014 | TASK-003, TASK-004 | Codex | S | 쓰기 61번째와 방 만들기 31번째가 429와 `Retry-After`이고 바뀐 것이 없어요. 토스 API는 사용자당 21번째·미니앱당 3,001번째를 부르지 않아요. 읽기는 세지 않아요. 토스 호출 수가 1분 구간별로 로그에 남아요. | 할 일 |
+| TASK-008 | 닉네임·모임 이름 규칙(화면·서버 공용) | 0 | SPEC-008, SPEC-005 | REQ-001, REQ-002, REQ-003, REQ-033, REQ-049, REQ-082 | `packages/shared`, 금칙어 목록 파일 | TASK-001 | Codex | S | SPEC-008 인수 조건(11자, 금칙어, 줄바꿈·제어 문자, 앞뒤 공백)과 모임 이름 1~20자 테스트가 화면 빌드와 서버 빌드에서 같은 함수로 통과해요. 금칙어 목록에 출처 기록이 있어요. | 할 일 |
+| TASK-009 | 카드 계산과 내 모임 성향 계산(순수 함수) | 0 | SPEC-013, SPEC-012 | REQ-019, REQ-020, REQ-021, REQ-022, REQ-023, REQ-026, REQ-027, REQ-028, REQ-029 | `packages/shared`, TBL-005 | TASK-001 | Codex | M | 분류 3개·다음 행동 규칙·테마 기본 문구, 응답 순서를 100번 바꿔도 같은 결과, 축 문항 0개면 그 축을 뺌, 결과에 점수 숫자·유형 이름 0개 — SPEC-012·013 인수 조건 테스트가 통과해요. | 할 일 |
+| TASK-010 | 토스 파트너 API 클라이언트(가짜 서버 포함) | 0 | SPEC-002, SPEC-025 | REQ-040, REQ-041, REQ-058, REQ-059, REQ-060, REQ-069, REQ-070, REQ-074 | 토스 `users/anon-key/exchange`·`messenger/send-message`, Workers mTLS 바인딩 | TASK-001 | Codex | M | 가짜 토스 서버로 `SUCCESS`, HTTP 200 + `resultType: FAIL`(4011, 4095, 5004, 4010), 5초 시간 초과, 연결 실패를 판정하는 테스트가 통과해요. 토스 응답 원문이 로그·오류에 0개예요. **미확인 F-1**(사업자 없이 콘솔에서 mTLS 인증서가 발급되나): 실제 호출 확인은 U-2와 TASK-050으로 넘겨요. | 할 일 |
+| TASK-011 | 정리 Cron | 0 | SPEC-002, SPEC-038 | REQ-040, REQ-041, REQ-069, REQ-070 | TBL-002, TBL-013, TBL-014, Cron Trigger | TASK-005, TASK-006, TASK-007 | Codex | S | 매시간 끝난 세션, 24시간 지난 요청 ID, 7일 지난 한도 계수를 지우는 테스트가 통과해요. | 할 일 |
+| TASK-012 | 문항 세트 파일 형식과 형식 검사 | 0 | SPEC-031 | REQ-030, REQ-033, REQ-037 | `content/question-sets/`, TBL-003~TBL-005 | TASK-001 | Codex | M | 검사 스크립트가 SPEC-031 인수 조건(문항 7개 세트 실패, 배포된 v1을 고치면 실패하고 v2로 내라고 알림, 빈 문구·알 수 없는 성향 축은 줄 번호와 실패)을 통과하고 CI에서 돌아요. | 할 일 |
+| TASK-013 | API-001 세션 시작과 사용자 등록 | 1 | SPEC-002, SPEC-003, SPEC-038 | REQ-040, REQ-041, REQ-069, REQ-070, REQ-074 | API-001, TBL-001, TBL-002, TBL-014 | TASK-005, TASK-007, TASK-010 | Codex | M | API-001의 201·400·401·403·429·default 응답마다 테스트가 통과해요. 쓴 인증 코드를 다시 보내면 401이고 D1에 쓴 행이 0개, 같은 사용자의 첫 요청 두 개가 동시에 오면 사용자 행 1개, 식별키 원문 열 0개예요. | 할 일 |
+| TASK-014 | 문항 세트 검토 기록 확인과 배포 스크립트 | 1 | SPEC-032 | REQ-031, REQ-032, REQ-034, REQ-035, REQ-036, REQ-038, REQ-054, REQ-078, REQ-079 | TBL-003~TBL-005, 검토 기록·권리 증빙 폴더 | TASK-003, TASK-012 | Codex | M | 검토 기록이나 권리 증빙이 없으면 거절, 금칙어 자동 검사 1건 이상이면 거절, 통과한 세트는 로컬·스테이징 D1에 새 버전 행으로 들어가고 기존 방은 옛 버전을 써요(테스트). 운영 D1 배포는 U-7이에요. **미확인 F-3**(서버 데이터로 새 테마를 번들 검토 없이 더해도 되나): 첫 버전의 세 테마는 검수 제출 전에 넣어 걸리지 않고, 출시 뒤 새 테마 전에 U-10으로 확인해요. | 할 일 |
+| TASK-015 | 첫 문항 세트 세 개 작성(여행, 회식·저녁, 주말 나들이) | 1 | SPEC-031, SPEC-032 | REQ-030, REQ-031, REQ-032, REQ-033, REQ-034, REQ-035, REQ-036, REQ-037, REQ-038, REQ-054, REQ-078, REQ-079 | `content/question-sets/`, 권리 증빙 폴더 | TASK-012 | Codex | L | 세 테마 v1이 각 문항 8개로 형식 검사를 통과하고, 점검 목록(금지 소재 10종, 정치 성향, 해요체, 비속어·은어·유행어, 6결 콘텐츠)의 AI 확인 기록과 권리 증빙(작성 역할, 작성일, AI 생성 기록)이 있어요. 사람 확인은 B-9대로 U-7 때 해요. | 할 일 |
+| TASK-016 | API-002 테마 목록 | 1 | SPEC-004 | REQ-001, REQ-037 | API-002, TBL-003, TBL-004 | TASK-005, TASK-014 | Codex | S | API-002의 200·401·403·default 응답마다 테스트가 통과하고, 배포된 테마가 0개면 빈 목록이에요. | 할 일 |
+| TASK-017 | API-003 방 만들기 | 1 | SPEC-005, SPEC-008 | REQ-001, REQ-002, REQ-003, REQ-033, REQ-049, REQ-082 | API-003, TBL-003, TBL-004, TBL-006, TBL-007, TBL-013, TBL-014 | TASK-005, TASK-006, TASK-007, TASK-008, TASK-014 | Codex | M | API-003의 201·400·401·403·409·429·default 응답마다 테스트가 통과해요. 방 코드는 31글자 중 10자(암호학적 난수), 같은 요청 ID 두 번에 방 1개, 인원 9면 방 0개, 방의 문항 세트 버전이 고정돼요. | 할 일 |
+| TASK-018 | API-004 방 소개와 내 참여 상태 | 1 | SPEC-006, SPEC-017, SPEC-021, SPEC-039 | REQ-005, REQ-006, REQ-010, REQ-016, REQ-021, REQ-055, REQ-082, REQ-083 | API-004, TBL-006~TBL-008 | TASK-017 | Codex | M | API-004의 200·401·403·404·default 응답마다 테스트가 통과해요. 형식이 틀린 코드와 없는 코드가 같은 404, `isFull`만 있고 참여자 수·닉네임 0개, `asOf`가 있어요. | 할 일 |
+| TASK-019 | API-005 방 입장 | 1 | SPEC-007, SPEC-008 | REQ-004, REQ-005, REQ-006, REQ-049 | API-005, TBL-006, TBL-007, TBL-013, TBL-014 | TASK-017 | Codex | M | API-005의 200·201·400·401·403·404·409·429·default 응답마다 테스트가 통과해요. 7명 방에 두 사람이 동시에 들어오면 참여자 8명이고 한 사람은 409 `room_full`, 이미 참여자면 200이에요. | 할 일 |
+| TASK-020 | API-006 문항 화면 | 1 | SPEC-010 | REQ-011, REQ-030 | API-006, TBL-005~TBL-008 | TASK-019 | Codex | S | API-006의 200·401·403·404·409·default 응답마다 테스트가 통과하고, 방에 고정된 버전의 문항 8개가 와요. | 할 일 |
+| TASK-021 | API-007 응답 제출과 중간 카드 갱신 | 1 | SPEC-011, SPEC-014, SPEC-018 | REQ-007, REQ-011, REQ-012, REQ-013, REQ-015, REQ-044, REQ-071 | API-007, TBL-005~TBL-009, TBL-013, TBL-014 | TASK-009, TASK-019 | Codex | L | API-007의 201·400·401·403·404·409·429·default 응답마다 테스트가 통과해요. 7개만 보내면 400과 남은 문항, 이미 제출했으면 409, 두 번째 응답에 중간 카드가 생기고 `logConversion`은 방마다 한 번이에요. | 할 일 |
+| TASK-022 | 자동 마감과 최종 카드 확정 | 1 | SPEC-015, SPEC-026 | REQ-007, REQ-017, REQ-018, REQ-025, REQ-043, REQ-047, REQ-074, REQ-084 | API-007, TBL-006, TBL-009, TBL-010, TBL-011 | TASK-021 | Codex | M | 인원 4·응답 3인 방에 두 사람이 동시에 내면 응답 4개·마감 1번, 지난 카드 요약 4개, 같은 트랜잭션 뒤 그 방 알림 신청 0개, 확정된 카드는 어떤 요청에도 바뀌지 않아요(테스트). | 할 일 |
+| TASK-023 | API-008 내 모임 성향 | 1 | SPEC-012 | REQ-022, REQ-026, REQ-027, REQ-028, REQ-029 | API-008, TBL-005, TBL-007, TBL-008 | TASK-021 | Codex | S | API-008의 200·401·403·404·default 응답마다 테스트가 통과하고, D1에 성향 행이 0개예요. | 할 일 |
+| TASK-024 | API-009 합의 카드 | 1 | SPEC-013, SPEC-019, SPEC-021 | REQ-005, REQ-014, REQ-016, REQ-019, REQ-020, REQ-021, REQ-022, REQ-023, REQ-082 | API-009, TBL-005~TBL-009 | TASK-022 | Codex | M | API-009의 200·401·403·404·default 응답마다 테스트가 통과해요. 열린 방에서 응답 전이면 403 `response_required`, 응답 완료 1명이면 `stage: none`, 마감 뒤에는 누구나 읽어요. | 할 일 |
+| TASK-025 | API-010 방장이 일찍 마감 | 1 | SPEC-016, SPEC-015, SPEC-026 | REQ-007, REQ-008, REQ-009, REQ-017, REQ-018, REQ-025, REQ-043, REQ-047, REQ-074, REQ-084 | API-010, TBL-006, TBL-007, TBL-009~TBL-011, TBL-013, TBL-014 | TASK-022 | Codex | M | API-010의 200·400·401·403·404·409·429·default 응답마다 테스트가 통과해요. 응답 1명이면 409 `not_enough_responses`, 참여자는 403 `not_host`, 이미 마감이면 200과 그 카드, 자동 마감과 동시에 와도 최종 카드 1개예요. | 할 일 |
+| TASK-026 | API-012 내 방 목록 | 1 | SPEC-039 | REQ-005, REQ-083 | API-012, TBL-006~TBL-008 | TASK-019 | Codex | S | API-012의 200·401·403·default 응답마다 테스트가 통과하고, 열린 방만 최근 입장 순으로 최대 20개예요. | 할 일 |
+| TASK-027 | API-013 지난 카드 | 1 | SPEC-027 | REQ-025 | API-013, TBL-010 | TASK-022 | Codex | S | API-013의 200·400·401·403·default 응답마다 테스트가 통과하고, `cursor`로 20개씩, 방이 만료돼도 요약이 남아요. | 할 일 |
+| TASK-028 | API-014 내 데이터 현황 | 1 | SPEC-028 | REQ-046 | API-014, TBL-007~TBL-011 | TASK-022, TASK-031 | Codex | S | API-014의 200·401·403·default 응답마다 테스트가 통과하고, 방장인 열린 방이 있으면 마감 안내 값이 와요. | 할 일 |
+| TASK-029 | API-015 내 데이터 지우기 | 1 | SPEC-029, SPEC-014, SPEC-015, SPEC-026 | REQ-007, REQ-015, REQ-017, REQ-018, REQ-025, REQ-043, REQ-044, REQ-045, REQ-047, REQ-048, REQ-074, REQ-084 | API-015, TBL-001, TBL-002, TBL-006~TBL-011, TBL-013, TBL-014 | TASK-022, TASK-031 | Codex | L | API-015의 204·400·401·403·429·default 응답마다 테스트가 통과해요. 방장인 열린 방(응답 3명)은 마감되고 최종 카드가 2명 기준, D1 batch 한 번이라 중간 실패면 지운 것 0개, 다시 부르면 204이고 그 토큰으로 다른 operation은 401이에요. | 할 일 |
+| TASK-030 | API-016 유입 경로 기록 | 1 | SPEC-001, SPEC-023 | REQ-039, REQ-042, REQ-057, REQ-066, REQ-068, REQ-073 | API-016, TBL-014, TBL-015 | TASK-005, TASK-007 | Codex | S | API-016의 204·400·401·403·429·default 응답마다 테스트가 통과하고, 기록에 사용자 식별값이 0개예요. | 할 일 |
+| TASK-031 | API-011 알림 신청 | 1 | SPEC-024, SPEC-026 | REQ-043, REQ-047, REQ-058, REQ-061, REQ-074, REQ-084 | API-011, TBL-001, TBL-007, TBL-008, TBL-011, TBL-013, TBL-014 | TASK-010, TASK-021 | Codex | M | API-011의 200·201·400·401·403·404·409·429·503·default 응답마다 테스트가 통과해요. 응답 전 403, 식별키가 세션 사용자와 다르면 403 `identity_mismatch`, D1의 식별키 열은 평문이 아니에요(AES-GCM, 신청마다 새 nonce). | 할 일 |
+| TASK-032 | 알림 발송 작업 | 1 | SPEC-025, SPEC-026 | REQ-043, REQ-047, REQ-058, REQ-059, REQ-060, REQ-069, REQ-074, REQ-084 | 토스 `send-message`, TBL-011, TBL-012, TBL-014 | TASK-010, TASK-022, TASK-031 · 사용자님: U-3(실발송만) | Codex | M | 가짜 토스 서버로: 응답을 낸 본인에게는 안 감, 마지막 응답으로 마감될 때도 감(DEC-024), 식별키당 분당 10회, 발송 실패에도 응답은 그대로, 같은 응답으로 두 번 안 보냄, 복호화한 값이 로그에 0개 — 테스트가 통과해요. 실제 사람에게 가는 발송은 U-3 뒤 스테이징에서만 해요. | 할 일 |
+| TASK-033 | 방 만료 Cron | 1 | SPEC-030, SPEC-026 | REQ-025, REQ-043, REQ-047, REQ-074, REQ-080, REQ-084 | TBL-006~TBL-011, Cron Trigger | TASK-022 | Codex | S | 30일 1시간 전에 만든 방은 방·응답·닉네임·알림 신청 0개이고 지난 카드 요약은 남아요. 한 번에 500개씩, 실패한 방은 다음 실행에서 다시 지워요(테스트). | 할 일 |
+| TASK-034 | 계약 테스트(로컬 서버) | 1 | SPEC-002, SPEC-038 | REQ-040, REQ-041, REQ-069, REQ-070 | API-001~API-016, `api/openapi.yaml` | TASK-013, TASK-016, TASK-018, TASK-020, TASK-023, TASK-024, TASK-025, TASK-026, TASK-027, TASK-028, TASK-029, TASK-030, TASK-031, TASK-032, TASK-033 | Codex | M | 로컬 `wrangler dev`(테스트 계정 토큰, 가짜 토스 서버)에 Schemathesis를 돌려 16개 operation이 모두 통과하고 CI에 들어가요. 보고에 도구 버전·서버·커밋을 적어요. | 할 일 |
+| TASK-035 | 웹 뼈대(TDS, SDK, 경로, 토큰) | 2 | SPEC-035, SPEC-009 | REQ-056, REQ-064, REQ-065, REQ-066, REQ-075, REQ-076, REQ-077 | SCR-001~SCR-015 경로, `design/base.tokens.json`, TDS | TASK-001 | Codex | M | Vite + React(CSR)에 TDS(`@toss/tds-mobile`, `@toss/tds-mobile-ait`)와 앱인토스 SDK 3.x가 들어가요. 사이트맵 경로 15개, 기록 바꿔 끼우기(S-2, S-3), 라이트 모드 고정, 핀치 줌 끔, 자체 뒤로가기 버튼 0개예요. 토큰은 CSS 변수로 쓰고 `color.card` 토큰을 카드 컴포넌트 밖에서 쓰면 검사가 실패해요. Prism 목 서버로 띄우는 명령이 README에 있어요. | 할 일 |
+| TASK-036 | API 클라이언트와 공통 처리 G-1~G-10 | 2 | SPEC-002, C-1, C-2, C-3, C-9, C-10 | REQ-040, REQ-041, REQ-069, REQ-070 | API-001~API-016, G-1~G-10 | TASK-035 | Codex | M | Bearer 토큰, `Idempotency-Key`(시간 초과 뒤 같은 키로 다시), 10초 시간 초과, 1초 넘으면 자리 표시, 401이면 한 번 다시 확인, 429 `Retry-After` 남은 초, `asOf` 표시, `visibilitychange` 다시 불러오기가 G-1~G-10대로 테스트돼요. 방 코드를 console·`Analytics.log` 파라미터·오류 보고에 남기면 실패하는 검사가 있어요(DEC-025). | 할 일 |
+| TASK-037 | SCR-001 진입 확인 | 2 | SPEC-001, SPEC-002, SPEC-023 | REQ-039, REQ-040, REQ-041, REQ-042, REQ-057, REQ-066, REQ-068, REQ-069, REQ-070, REQ-073 | SCR-001, API-001, API-016 | TASK-036 | Codex | M | SCR-001의 상태 4개(loading, error, permission, update-required)가 목 서버 응답대로 보여요. 토스 앱 5.231.0이면 업데이트 안내만 보이고 서버 요청 0건, 인증 코드는 `User.createAnonymousKeyAuthCode`로 받고, 초대 링크의 방 코드를 읽은 뒤 주소에서 지워요. 진입 직후 바텀시트 0번이에요. | 할 일 |
+| TASK-038 | SCR-002 홈 | 2 | SPEC-039, SPEC-027, SPEC-033 | REQ-005, REQ-025, REQ-050, REQ-083 | SCR-002, API-012 | TASK-036 | Codex | M | SCR-002의 상태 6개가 목 서버 응답대로 보이고, 방을 고르면 상태에 따라 SCR-007·SCR-009·SCR-010으로 가요. 지난 카드·내 데이터 지우기·약관 메뉴가 있어요. | 할 일 |
+| TASK-039 | SCR-003·SCR-004 테마 고르기와 방 정보 적기 | 2 | SPEC-004, SPEC-005, SPEC-008 | REQ-001, REQ-002, REQ-003, REQ-033, REQ-037, REQ-049, REQ-082 | SCR-003, SCR-004, API-002, API-003 | TASK-036, TASK-008 | Codex | M | 두 화면의 상태 9개가 목 서버 응답대로 보이고, 400이면 칸별 이유가 보이며 적은 값이 남아요. | 할 일 |
+| TASK-040 | SCR-005·SCR-006 방 소개와 닉네임 정하기 | 2 | SPEC-006, SPEC-007, SPEC-008, SPEC-009 | REQ-004, REQ-005, REQ-006, REQ-016, REQ-049, REQ-055, REQ-056, REQ-065 | SCR-005, SCR-006, API-004, API-005 | TASK-036, TASK-008 | Codex | M | 두 화면의 상태 11개(SCR-005#full 포함)가 목 서버 응답대로 보이고, 초대 링크로 연 첫 화면에서 뒤로가기는 미니앱을 닫아요. | 할 일 |
+| TASK-041 | SCR-007 문항 | 2 | SPEC-010, SPEC-011, SPEC-009 | REQ-007, REQ-011, REQ-012, REQ-013, REQ-030, REQ-056, REQ-065 | SCR-007, API-006, API-007 | TASK-036 | Codex | M | SCR-007의 상태 5개가 목 서버 응답대로 보여요. 고른 답이 기기 저장소에 남아 다시 열면 이어지고, 8개를 다 고를 때까지 [제출하기]가 꺼져 있고 "n개 남았어요"가 보여요. | 할 일 |
+| TASK-042 | SCR-008 내 결과와 알림 신청 | 2 | SPEC-012, SPEC-024 | REQ-022, REQ-026, REQ-027, REQ-028, REQ-029, REQ-058, REQ-061 | SCR-008, API-008, API-004, API-011 | TASK-036 | Codex | M | SCR-008의 상태 7개가 목 서버 응답대로 보여요. `Notification.requestAgreement.isSupported()`가 false면 notify-update, 동의 거절이면 신청 0개, 동의하면 새 인증 코드와 함께 API-011을 불러요. | 할 일 |
+| TASK-043 | SCR-009 합의 카드와 방장 마감 | 2 | SPEC-019, SPEC-016, SPEC-017, SPEC-018 | REQ-008, REQ-009, REQ-010, REQ-014, REQ-017, REQ-018, REQ-019, REQ-020, REQ-021, REQ-022, REQ-025, REQ-071 | SCR-009, API-009, API-004, API-010 | TASK-036 | Codex | L | SCR-009의 상태 7개(confirm-close 포함)가 목 서버 응답대로 보이고, 합의 카드는 DEC-033의 카드 모양이에요. `logConversion`이면 `Analytics.log`(`interim_card_created`, 파라미터에 방 코드·사용자 ID 없음)를 한 번 불러요. 방장 버튼 3개는 DEC-034대로예요. | 할 일 |
+| TASK-044 | SCR-010 최종 카드(읽기 전용) | 2 | SPEC-021 | REQ-005, REQ-016, REQ-021, REQ-082 | SCR-010, API-009, API-004 | TASK-043 | Codex | S | SCR-010의 상태 5개가 목 서버 응답대로 보이고, 입장·응답 버튼이 0개, [우리도 해 보기]가 SCR-003으로 가요. | 할 일 |
+| TASK-045 | 카드 이미지 저장 | 2 | SPEC-020 | REQ-024 | SCR-009, SCR-010, `File.saveBase64` | TASK-043 | Codex | M | [카드 저장]이 1080px 너비 PNG를 `moim-card-YYYYMMDD.png`로 저장하고 "저장했어요"를 보여요. 실패하면 안내와 [다시 시도], 이미지에 닉네임·방 코드 0개예요. | 할 일 |
+| TASK-046 | 초대 링크 만들기와 공유 | 2 | SPEC-022 | REQ-051, REQ-052, REQ-053, REQ-054, REQ-078 | SCR-007, SCR-008, SCR-009, SCR-010, `Share.createLink`, `Share.sendMessage`, OG 이미지 | TASK-043 | Codex | M | 만든 링크의 값이 `intoss://` 경로와 방 코드뿐이고, OG 이미지(1200×600px, `https://` 절대 경로)와 그 권리 증빙이 있어요. OG 최소 버전 미만이면 업데이트 안내, 공유 시트 취소 뒤 원래 화면이에요. 출시 전 확인은 `intoss-private://` 테스트 스킴으로 TASK-053에서 해요. | 할 일 |
+| TASK-047 | SCR-011·SCR-012 지난 카드 | 2 | SPEC-027 | REQ-025 | SCR-011, SCR-012, API-013 | TASK-036 | Codex | M | 두 화면의 상태 7개가 목 서버 응답대로 보이고, 20개씩 더 불러와요. | 할 일 |
+| TASK-048 | SCR-013 내 데이터 지우기 | 2 | SPEC-028, SPEC-029 | REQ-018, REQ-043, REQ-044, REQ-045, REQ-046, REQ-048 | SCR-013, API-014, API-015 | TASK-036 | Codex | M | SCR-013의 상태 7개(confirm, done 포함)가 목 서버 응답대로 보여요. done에서 [미니앱 닫기]와 [처음 화면으로]를 고르고, 기록을 바꿔 끼워 뒤로가기가 미니앱을 닫아요(DEC-029). | 할 일 |
+| TASK-049 | SCR-014·SCR-015 이용약관과 개인정보처리방침 | 2 | SPEC-033 | REQ-050 | SCR-014, SCR-015 | TASK-035 · 사용자님: U-5 | Codex | M | 번들 안 화면에 저장하는 것, 저장 위치(Cloudflare, 해외 리전), 보관 기간, 지우는 방법, 변경일이 있어요. 운영자 표기는 저장소 밖 값으로 빌드 때 넣고, 값이 없으면 운영 빌드가 실패해요(U-5). **미확인**: 해외 리전 저장에 국외 이전 동의가 필요한지(02 메모) — U-5 때 함께 봐요. | 할 일 |
+| TASK-050 | 스테이징 환경과 실제 토스 연결 | 3 | SPEC-002, SPEC-025, SPEC-038 | REQ-040, REQ-041, REQ-058, REQ-059, REQ-060, REQ-069, REQ-070, REQ-074 | Workers·D1 스테이징, 비밀 값(HMAC, AES, 세션), mTLS 인증서 바인딩 | TASK-034, TASK-014, TASK-015 · 사용자님: U-1, U-2 | Codex | M | `wrangler` 스테이징 배포 스크립트가 있고 비밀 값은 `wrangler secret`으로만 넣어요(저장소 0개). 허용 Origin이 appName의 두 주소, 실제 인증 코드 교환 1번 성공으로 **F-1 확인**, 스테이징 D1에 세 테마 배포, 스테이징 대상 계약 테스트 통과예요. U-1·U-2를 기다려요. | 할 일 |
+| TASK-051 | 앱인토스 번들과 실제 서버 연결 | 3 | SPEC-035, SPEC-001 | REQ-039, REQ-042, REQ-057, REQ-064, REQ-065, REQ-066, REQ-068, REQ-073, REQ-075, REQ-076, REQ-077 | `.ait` 번들, SCR-001~SCR-015, API-001~API-016 | TASK-002, TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-042, TASK-044, TASK-045, TASK-046, TASK-047, TASK-048, TASK-049, TASK-050 | Codex | M | 화면이 목 서버 대신 스테이징을 불러 operation 16개마다 accepted를 기록해요. 번들이 압축 해제 100MB 이하이고 TASK-002 검사를 통과해요. QR 테스트 점검표(TASK-053)를 만들어요. | 할 일 |
+| TASK-052 | 접근성 자동 검사(브라우저) | 3 | SPEC-037 | REQ-072, REQ-081 | SCR-001~SCR-015, 상태 70개 | TASK-037, TASK-038, TASK-039, TASK-040, TASK-041, TASK-042, TASK-044, TASK-045, TASK-046, TASK-047, TASK-048, TASK-049 | Codex | M | Playwright + axe로 상태 70개를 360·430px에서 봐요: 글자 대비 4.5:1(꺼진 버튼 포함), 누르는 영역 44×44pt. **개발 단계 확인 2(스크린 리더 순서)**: 접근성 트리의 읽는 순서·이름 스냅샷(선택지, 진행 막대, 확인 창, 합의 카드의 분류와 수). **확인 3(키보드 Tab 순서)**: Tab 순서, 포커스 표시, 확인 창 안에 포커스가 머묾, 아래 고정 버튼에 포커스가 가려지지 않음. 기준 밖 0개예요. | 할 일 |
+| TASK-053 | 실기기 QR 확인(토스 앱) | 3 | SPEC-035, SPEC-036, SPEC-037, SPEC-001 | REQ-039, REQ-042, REQ-057, REQ-064, REQ-065, REQ-066, REQ-067, REQ-068, REQ-072, REQ-073, REQ-075, REQ-076, REQ-077, REQ-081 | 토스 앱 QR 테스트(Android, iOS), `intoss-private://` 테스트 스킴 | TASK-051, TASK-052 · 사용자님: U-3, U-6 | 사용자님 | M | **확인 1(토스 WebView·TDS 렌더)**: 버튼 모양, Toss Product Sans 글꼴, 카드 색이 카드 안에만, 좁은 폰·넓은 폰, 다크 모드 기기에서도 라이트. **확인 2**: VoiceOver·TalkBack이 TASK-052 스냅샷 순서대로 읽음. **확인 3**: 외부 키보드를 붙였을 때 Tab 순서(붙일 수 있는 기기에서). 초대 링크 진입 20번 첫 화면 P95 10초, 뒤로가기로 닫힘, 바텀시트 0번. 결과는 Codex가 점검표에 기록해요. QR 테스트는 토스 앱에 로그인한 만 19세 이상 워크스페이스 멤버만 할 수 있어 U-6이에요. | 할 일 |
+| TASK-054 | 서버 성능 측정 | 3 | SPEC-036 | REQ-067, REQ-068 | 스테이징, API-003, API-005, API-007, API-009 | TASK-050 | Codex | S | 동시 사용자 20명으로 방 만들기·입장·응답 제출·카드 열기가 모두 P95 2초 안이고, 도구·서버·커밋과 함께 기록돼요. | 할 일 |
+
+TASK 54개(Codex 53, 사용자님 1), 크기 S 16 · M 34 · L 4로 모두 합치면 약 50작업일이에요(동시에 여러 작업자가 하면 줄어요). 상태는 모두 `할 일`이에요.
+
+## 3. 사용자님 승인·행동이 필요한 일
+
+이 일들은 위임(오랑이)으로 답하지 않고 사용자님께 여쭤요: 결제, 실데이터 삭제, 외부 발송·제출, 실사용자 릴리스, 본인인증, 그리고 제품명·상표. 제품명은 아직 **'가칭'**이에요.
+
+| ID | 일 | 왜 사용자님인가 | 언제 필요한가 | 기다리는 TASK |
+| --- | --- | --- | --- | --- |
+| U-1 | 제품명과 appName 정하기(상표 확인 포함) | 제품명·상표. appName은 콘솔에 등록하면 바꿀 수 없고 실서비스 Origin(`https://<appName>.apps.tossmini.com`)과 공유 링크에 들어가요 | U-2 전. 늦어도 페이즈 1·2가 끝나 TASK-050을 시작하기 전 | TASK-050(허용 Origin), TASK-051 |
+| U-2 | 토스 콘솔 가입·워크스페이스·앱 등록, mTLS 인증서 발급(F-1 확인) | 본인 명의 토스 앱·만 19세 이상 본인인증, 앱 등록은 외부 제출 | U-1 바로 뒤, TASK-050 전. 인증서 버튼이 사업자 없이 눌리지 않으면 U-4가 앞당겨지고 SPEC-002·025를 변경 절차로 다시 봐요 | TASK-050 |
+| U-3 | 알림 기능성 캠페인·알림 동의문·메시지 템플릿 등록과 템플릿 검수 요청, 전환 지표 "직접 조합하기"(F-2) | 외부 제출. 실제 사람에게 가는 알림은 외부 발송 | TASK-031·032가 가짜 서버로 끝난 뒤, TASK-053 전(실기기에서 동의 화면을 보려면 `templateCode`가 있어야 해요) | TASK-032(실발송만), TASK-053 |
+| U-4 | 사업자등록 | 사업자 정보·정산 | **첫 버전에는 필요 없어요**(광고·결제·토스 로그인 없음, SPEC-034). 첫 버전 뒤 광고를 켜기 전이나 누적 예상수익이 5,000원에 가까워질 때(닿으면 5영업일 안). U-2에서 인증서가 사업자를 요구하면 그때 바로 | 없음(U-2 결과에 따라 TASK-050) |
+| U-5 | 이용약관·개인정보처리방침의 운영자 표기(이름·연락처 등)와 문안 확정 | 개인정보이고 공개 저장소라 값을 저장소에 넣지 않아요. 문안은 사용자님 이름으로 공개돼요 | TASK-049 완료 전, 늦어도 U-8 전 | TASK-049 |
+| U-6 | 실기기 QR 테스트 | QR 테스트는 토스 앱에 로그인한 만 19세 이상 워크스페이스 멤버만 할 수 있어요(본인인증) | TASK-051 뒤 | TASK-053 |
+| U-7 | 운영 배포(운영 Workers·D1, 비밀 값, 문항 세트 운영 D1 배포)와 문항 세트 점검 목록의 사람 확인 | 운영 배포. Cloudflare 유료 플랜이 필요하면 결제 | 12 QA 통과 뒤, U-8 전 | 12 QA 뒤 |
+| U-8 | 검수 제출(앱 정보와 번들을 한 번에) | 외부 제출. 검토는 영업일 3~7일, 반려되면 재검수 | U-7 뒤 | 13 출시 |
+| U-9 | 출시(실사용자 릴리스) | 실사용자 릴리스 | 검수 통과 뒤 | 13 출시 |
+| U-10 | 콘솔 문의: 서버 데이터로 새 테마를 번들 검토 없이 더해도 되나(F-3) | 외부 메시지 | 첫 버전 출시 뒤, 새 테마를 더하기 전. 첫 버전에는 영향이 없어요 | 출시 뒤 테마 추가 |
+
+위임으로 진행하는 것(사용자님께 묻지 않음): 스테이징용 Cloudflare Workers·D1 만들기와 스테이징 배포(실사용자 없음, 무료 범위), 스테이징의 테스트 계정 데이터 지우기, 저장소 안 PR 병합(토링이). 무료 범위를 넘으면 결제라 U-7처럼 사용자님께 여쭤요.
+
+## 4. 개발 단계 확인 항목과 미확인 사실
+
+09 목업에서 재지 않은 것(DEC-035)과 04의 확인할 사실 중 남은 것이 어느 TASK에 있는지예요.
+
+| 항목 | 어디서 확인 | 무엇으로 끝나나 |
+| --- | --- | --- |
+| 확인 1: 실제 토스 WebView·TDS 렌더 | TASK-053(실기기), 준비는 TASK-035·051 | 버튼 모양, Toss Product Sans 글꼴, 카드 색이 카드 안에만, 좁은 폰·넓은 폰, 다크 모드 기기에서 라이트 |
+| 확인 2: 스크린 리더 읽는 순서 | TASK-052(접근성 트리 스냅샷), TASK-053(VoiceOver·TalkBack) | 선택지, 진행 막대, 확인 창, 합의 카드의 분류와 수를 스냅샷 순서대로 읽음 |
+| 확인 3: 키보드 Tab 순서·포커스 | TASK-052(브라우저), TASK-053(외부 키보드를 붙일 수 있는 기기) | 확인 창 안에 포커스가 머묾, 아래 고정 버튼에 가려지지 않음 |
+| F-1: 사업자 없이 콘솔 mTLS 인증서 발급 | U-2, TASK-010(가짜 서버), TASK-050(실제 교환 1번) | 실제 인증 코드 교환 성공. 안 되면 변경 절차 |
+| F-3: 문항 세트를 서버에서 내려 줘도 되나 | TASK-014, U-10 | 첫 버전은 영향 없음. 출시 뒤 새 테마 전에 콘솔 답 |
+| F-2: 전환 지표 콘솔 설정 | TASK-043(SDK 호출), U-3(콘솔 조합) | 콘솔에 대표 전환 1개 |
+| 국외 이전 동의(02 메모, 공식 문장 없음) | TASK-049, U-5 | 문안 확정 때 함께 봄 |
+
+## 5. AI가 정한 것 (B-1~B-10)
+
+체크포인트 질문 1이 승인되면 함께 승인돼요(DEC-036). 되돌릴 수 있는 선택이고, 바꾸면 해당 TASK 완료 조건만 바뀌어요.
+
+| ID | 정한 것 | 이유 |
+| --- | --- | --- |
+| B-1 | pnpm workspace 하나에 `apps/web`(미니앱), `apps/api`(Workers), `packages/shared`(닉네임 규칙·카드 계산), `content/question-sets/`를 둬요 | SPEC-008 "화면과 서버가 같은 규칙", SPEC-013 순수 함수를 한 벌로 |
+| B-2 | 화면은 Vite + React(CSR), TDS(`@toss/tds-mobile`, `@toss/tds-mobile-ait`), 앱인토스 SDK 3.x(3.6.0 이상) | SPEC-035(CSR·SSG만), `User.createAnonymousKeyAuthCode`가 3.6.0 이상(F-6), TDS 버전은 [토스 조사](../00-research/toss-official-2026-11-27.md) 2절 |
+| B-3 | 서버는 Cloudflare Workers(TypeScript)에 가벼운 라우터(Hono) 하나 | 06 계약 그대로, 라우터의 404·405를 problem 모양으로 바꾸기 쉬움 |
+| B-4 | 테스트는 Vitest + Workers 풀(로컬 D1), 계약 테스트는 Schemathesis(로컬 → 스테이징), 화면은 Playwright + axe | 06에서 쓴 도구 그대로, 운영 서버에는 계약 테스트를 돌리지 않음 |
+| B-5 | 토스 API는 가짜 서버로 먼저 만들고 실제 호출은 스테이징(TASK-050)부터 | 콘솔·인증서(U-2) 없이 페이즈 0~2를 끝낼 수 있게 |
+| B-6 | 크기는 S 반나절·M 하루·L 이틀, TASK 하나가 PR 하나 | 작업자가 한 번에 끝내고 리뷰할 수 있는 크기 |
+| B-7 | 화면 TASK는 목 서버로 "provided", TASK-051에서 실제 서버로 "accepted" | 11 개발 단계 기준(두 단계를 섞지 않음) |
+| B-8 | 계정 ID·DB ID는 환경 변수, 비밀 값(HMAC 키, AES 키, mTLS 인증서)은 `wrangler secret`·바인딩으로만. 저장소에 0개 | 공개 저장소 |
+| B-9 | 문항 세트 점검 목록은 AI가 먼저 확인해 검토 기록을 쓰고, 사람 확인(REQ-034·079 측정)은 운영 배포(U-7) 때 사용자님이 해요. 스테이징 배포는 AI 기록으로 해요 | REQ-034 측정이 "사람이 한 번씩 확인", 스테이징에는 실사용자가 없음 |
+| B-10 | 금칙어 목록은 저장소에 두고 출처를 적어요 | 화면·서버·문항 검사가 같은 목록을 써야 해요(SPEC-008, SPEC-032) |
+
+## 6. 검사 결과 (2026-11-28)
+
+| 검사 | 결과 |
+| --- | --- |
+| `python3 scripts/check-wbs.py` | 통과 400, 실패 0. TASK 54개, SPEC 39/39, REQ 84/84, API 16/16, SCR 15/15, 가장 긴 의존 사슬 TASK 12개, 의존 순환 없음, 의존 없이 시작하는 TASK는 TASK-001 하나 |
+| 앞 단계 승인에서 빠지거나 바뀐 것 | 없음. SPEC 39행·REQ 84개·API 16개·SCR 15개가 모두 TASK에 닿아요. REQ-037(Should, 세 테마)은 TASK-015가 그대로 가져가요 |
