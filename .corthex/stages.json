@@ -32,13 +32,13 @@
           "at": "2026-11-28"
         },
         {
-          "level": "warn",
-          "message": "F-1: 콘솔에서 사업자 없이 mTLS 인증서가 발급되는지 미확인(REQ-041, REQ-058)",
+          "level": "info",
+          "message": "F-1: 콘솔에서 사업자 없이 mTLS 인증서가 발급되는지 미확인, 05 ERD·06 API 전에 확인(REQ-041, REQ-058)",
           "at": "2026-11-28"
         },
         {
-          "level": "warn",
-          "message": "F-2: 전환 지표 이벤트를 남기는 SDK 호출 미확인(REQ-071)",
+          "level": "info",
+          "message": "F-2: 전환 지표 이벤트를 남기는 SDK 호출 미확인, 05 ERD·06 API 전에 확인(REQ-071)",
           "at": "2026-11-28"
         }
       ],
