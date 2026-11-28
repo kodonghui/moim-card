@@ -24,6 +24,7 @@ export default defineConfig(({ command, mode }) => {
     if (!api) throw new Error('VITE_API_BASE_URL is required for production builds');
     try { if (new URL(api).protocol !== 'https:') throw new Error('not HTTPS'); }
     catch { throw new Error('VITE_API_BASE_URL must be an HTTPS URL'); }
+    if (!env.VITE_OPERATOR_NAME?.trim() || !env.VITE_OPERATOR_CONTACT?.trim()) throw new Error('VITE_OPERATOR_NAME and VITE_OPERATOR_CONTACT are required for production builds');
   }
   return {
   plugins: [react(), provenance()],

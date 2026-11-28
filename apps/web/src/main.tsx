@@ -13,6 +13,7 @@ import { CardScreen } from './CardScreen';
 import { FinalCard } from './FinalCard';
 import { PastCards, PastCardDetail } from './PastCards';
 import { DeleteData } from './DeleteData';
+import { Terms, Privacy } from './Legal';
 import './style.css';
 
 
@@ -31,6 +32,8 @@ function App() {
   if (path === '/room/final') return <FinalCard />;
   if (path === '/past-cards') return <PastCards />;
   if (path === '/me/delete') return <DeleteData />;
+  if (path === '/legal/terms') return <Terms />;
+  if (path === '/legal/privacy') return <Privacy />;
   if (matchRoute(path) === '/past-cards/:pastCardId') return <PastCardDetail id={path.split('/')[2]} />;
   return <main><p role="status">{matchRoute(path) ? '확인하고 있어요' : '화면을 찾을 수 없어요'}</p></main>;
 }

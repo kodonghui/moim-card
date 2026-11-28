@@ -28,6 +28,8 @@ jobs:
       - run: pnpm build
         env:
           VITE_API_BASE_URL: https://example.invalid
+          VITE_OPERATOR_NAME: CI operator
+          VITE_OPERATOR_CONTACT: ci@example.invalid
       - run: pnpm --filter @moim-card/apps-web exec playwright install --with-deps chromium
       - run: pnpm --filter @moim-card/apps-web test:browser
       - run: python3 scripts/check-tokens.py
