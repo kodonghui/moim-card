@@ -1,5 +1,13 @@
 # 진행 기록
 
+### 2026-11-28 · 05·06 체크포인트 답 기록과 통과
+
+- Done: 토링이가 전한 오랑이 답(사용자님 위임, 근거 2026-11-23 "추천 모두 승인", 2026-11-27 "DDD랑 목업때만")을 DEC-022(05 질문 1, 스키마 고정), DEC-023(06 질문 1, 계약 승인), DEC-024(06 질문 2, 마지막 응답의 알림도 보냄), DEC-025(06 질문 3, 내 방 목록에 방 코드, 조건: 기기 로그에 남기지 않음)로 기록하고 DEC-021을 in force로 바꿨어요. 결정된 문장과 상태 칸만 고쳤어요: SPEC-025(마지막 응답 발송 문장), SPEC-026 [동시성](다른 요청의 발송으로 좁힘), SPEC-039 [노출](화면에 없음, 기기 로그 금지), API-007·API-012 설명의 `Open:`, 체크포인트 두 파일의 상태 줄과 답, erd.md·api.md 상태 줄. `.corthex/stages.json`의 05·06을 `done`으로 바꾸고 체크포인트를 적었어요.
+- Why: 05·06은 DDD·목업이 아니라 위임 답으로 통과를 기록해요(DEC-014). 오랑이가 06 질문 3에 함께 든 "마감 뒤 응답한 사람만"은 사용자님 결정 DEC-013(e4225)과 01 변경(e4355)의 "누구나 보기"와 부딪혀 넣지 않았어요(토링이가 오랑이에게 정정).
+- Result: 05·06 통과. 승인 버전은 PR #8 커밋 `f1e2c43`과 이 답을 반영한 커밋이에요. DDD(01)는 바꾸지 않았어요.
+- Checked: term-check, `scripts/check-contract.py`, `hub push moim-card --dry-run` 결과는 PR #8 본문과 보고에 적어요.
+- Next: PR #8 병합(토링이) → `push moim-card` → 07 사이트맵(SCR ID).
+
 ### 2026-11-28 · 05 ERD와 06 API 계약 초안, F-1~F-7 확인
 
 - Done: 미확인 사실 F-1~F-7을 토스 공식 개발자센터 페이지 본문(`.md` 주소)으로 확인하고, 다르게 나온 사실에 걸린 04 행(SPEC-002, SPEC-018, SPEC-024, SPEC-025)과 C-5의 셈 오류만 고쳤어요(DEC-020, 근거 DEC-016). `corthex-contract`로 05 ERD([db/schema.sql](../../db/schema.sql), [0001_init.sql](../../db/migrations/0001_init.sql), [erd.md](../05-erd/erd.md), TBL-001~015)와 06 API 계약([api/openapi.yaml](../../api/openapi.yaml), [api.md](../06-api/api.md), API-001~016, 오류 코드 22개)을 썼어요. 검사 스크립트 [scripts/check-contract.py](../../scripts/check-contract.py)를 더했어요. 체크포인트 질문은 [checkpoint-05.md](../05-erd/checkpoint-05.md)(질문 1개)와 [checkpoint-06.md](../06-api/checkpoint-06.md)(질문 3개)에 있어요. `.corthex/project.json`에 05·06 단계 설정(human `nexus`, truth `source`)을, `.corthex/stages.json`에 05·06을 `in_progress`로 더했어요.

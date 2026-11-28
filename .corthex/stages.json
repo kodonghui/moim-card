@@ -111,7 +111,7 @@
       ]
     },
     "05-erd": {
-      "state": "in_progress",
+      "state": "done",
       "checks": [
         {
           "level": "info",
@@ -124,11 +124,19 @@
           "at": "2026-11-28"
         }
       ],
-      "next": "05 질문 1(스키마 고정) 답 → 통과 기록",
-      "updated": "2026-11-28T19:00:00+09:00"
+      "next": "11 개발: wrangler.toml의 migrations_dir = \"db/migrations\", 바꿀 때는 새 마이그레이션",
+      "updated": "2026-11-28T20:00:00+09:00",
+      "checkpoints": [
+        {
+          "approved": "05 ERD 체크포인트 통과(스키마 고정). 질문 1(TBL-001~015, PR #8 커밋 f1e2c43)은 오랑이가 사용자님 위임으로 추천안 승인(DEC-022, 위임 근거 2026-11-23 \"추천 모두 승인\", 2026-11-27 \"DDD랑 목업때만\"). AI가 정한 E-1~E-9 함께 승인(DEC-021). NEXUS 확정 없이 통과(DEC-014)",
+          "by": "the orchestrator agent on the owner's behalf",
+          "where": "docs/records/decisions.md (DEC-021, DEC-022)",
+          "date": "2026-11-28"
+        }
+      ]
     },
     "06-api": {
-      "state": "in_progress",
+      "state": "done",
       "checks": [
         {
           "level": "info",
@@ -136,18 +144,21 @@
           "at": "2026-11-28"
         },
         {
-          "level": "warn",
-          "message": "REQ-058과 SPEC-026 [동시성]: 마지막 응답으로 방이 마감되면 알림이 가지 않음(06 질문 2, API-007 Open)",
-          "at": "2026-11-28"
-        },
-        {
           "level": "info",
-          "message": "SPEC-039 [노출] 방 코드 없음을 화면 기준으로 읽음(06 질문 3, API-012 Open)",
+          "message": "06 질문 2(마지막 응답의 알림 보냄, DEC-024), 질문 3(내 방 목록에 방 코드, 기기 로그에 남기지 않음, DEC-025)으로 SPEC-025·026·039와 API-007·012의 Open 표시를 고침",
           "at": "2026-11-28"
         }
       ],
-      "next": "06 질문 1~3 답 → 통과 기록 → 07 사이트맵(SCR ID)",
-      "updated": "2026-11-28T19:00:00+09:00"
+      "next": "07 사이트맵(SCR ID). 11 개발에서 실제 서버로 계약 테스트(schemathesis)",
+      "updated": "2026-11-28T20:00:00+09:00",
+      "checkpoints": [
+        {
+          "approved": "06 API 체크포인트 통과(구현 전 계약 승인). 질문 1(API-001~016, 오류 코드 22개, PR #8 커밋 f1e2c43)·질문 2(마지막 응답으로 마감될 때도 알림)는 추천안 승인, 질문 3(내 방 목록에 방 코드)은 조건 '방 코드를 기기 로그에 남기지 않음'을 더해 승인. 모두 오랑이가 사용자님 위임으로 답함(DEC-023, DEC-024, DEC-025, 위임 근거 2026-11-23 \"추천 모두 승인\", 2026-11-27 \"DDD랑 목업때만\"). R-1~R-11·P-1~P-6 함께 승인(DEC-021). NEXUS 확정 없이 통과(DEC-014)",
+          "by": "the orchestrator agent on the owner's behalf",
+          "where": "docs/records/decisions.md (DEC-021, DEC-023, DEC-024, DEC-025)",
+          "date": "2026-11-28"
+        }
+      ]
     }
   }
 }

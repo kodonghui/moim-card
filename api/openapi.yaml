@@ -851,8 +851,8 @@ paths:
       operationId: submitResponse
       summary: 응답 제출
       description: '문항 8개의 답을 받아 한 D1 batch에서: 방이 열려 있는지 조건을 걸어 응답을 저장하고 응답 완료 수를 늘려요. 응답 완료가 2명 이상이면 중간 카드를 만들거나 갱신하고(SPEC-014), 인원에 닿으면 방을 마감하고 최종 카드를 확정하고 지난 카드 요약을 남기고 그 방의 알림 신청을 지워요(SPEC-015, SPEC-026).
-        알림 발송(SPEC-025)은 커밋 뒤에 해요: 같은 batch에서 읽어 둔 신청(본인 제외)의 암호문을 메모리에서만 복호화해 보내므로, 마지막 응답으로 방이 마감돼도 신청자는 알림을 받아요. Open: 마지막 응답의 알림을 보낼지는 06 체크포인트 질문 2예요(REQ-058과 SPEC-026 동시성 문장). `logConversion`이 true면
-        화면이 `Analytics.log`(log_name `interim_card_created`, log_type `event`)를 한 번 불러요(SPEC-018, F-2, DEC-020). 다른 요청 ID로 다시 내면 409 already_submitted이고, 저장된 결과는 API-008·API-009로 불러와요.'
+        알림 발송(SPEC-025)은 커밋 뒤에 해요: 같은 batch에서 읽어 둔 신청(본인 제외)의 암호문을 메모리에서만 복호화해 보내므로, 마지막 응답으로 방이 마감돼도 신청자는 알림을 받아요. 마지막 응답의 알림도 이렇게 보내요(06 질문 2, DEC-024). `logConversion`이 true면 화면이 `Analytics.log`(log_name
+        `interim_card_created`, log_type `event`)를 한 번 불러요(SPEC-018, F-2, DEC-020). 다른 요청 ID로 다시 내면 409 already_submitted이고, 저장된 결과는 API-008·API-009로 불러와요.'
       x-corthex:
         id: API-007
         spec:
@@ -1953,7 +1953,8 @@ paths:
     get:
       operationId: listMyRooms
       summary: 내 방 목록
-      description: '내가 참여 중인 열린 방을 최근 입장 순으로 20개까지 돌려줘요(TERM-046). 화면에는 방 코드를 보이지 않고, roomCode는 방 API를 부르는 데만 써요(DEC-021). Open: SPEC-039 [노출]의 "방 코드 없음"을 화면 기준으로 읽은 것은 06 체크포인트 질문 3이에요.'
+      description: 내가 참여 중인 열린 방을 최근 입장 순으로 20개까지 돌려줘요(TERM-046). 화면에는 방 코드를 보이지 않고, roomCode는 방 API를 부르는 데만 써요. 방 코드는 화면에 보이지 않고, 화면은 이 응답과 방 코드를 기기 로그(console, Analytics.log 파라미터, 오류 보고)에 남기지 않아요(06 질문
+        3, DEC-025).
       x-corthex:
         id: API-012
         spec:

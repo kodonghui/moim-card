@@ -1,6 +1,6 @@
 # 모임 합의 카드(가칭): API 계약 (06)
 
-상태: **초안, 체크포인트 대기**(2026-11-28) · 원본: [api/openapi.yaml](../../api/openapi.yaml)(OpenAPI 3.1, API-001~016) · 체크포인트 질문: [checkpoint-06.md](checkpoint-06.md)
+상태: **계약 승인, 체크포인트 통과**(2026-11-28, DEC-023~025) · 원본: [api/openapi.yaml](../../api/openapi.yaml)(OpenAPI 3.1, API-001~016) · 체크포인트 질문: [checkpoint-06.md](checkpoint-06.md)
 
 - 입력: [04 기능 명세](../04-functional-spec/spec.md)(SPEC-001~039), [05 ERD](../05-erd/erd.md)(TBL-001~015). 07 사이트맵 전이라 SCR ID는 아직 없어요.
 - 계약이 먼저예요. 화면은 목 서버(`prism mock api/openapi.yaml`)로, 서버는 계약 테스트(`schemathesis run api/openapi.yaml --url <스테이징>`)로 맞춰요. 운영 서버에는 계약 테스트를 돌리지 않아요.
@@ -136,7 +136,7 @@
 | R-9 | 토스 API 결과는 HTTP 200이어도 `resultType`이 `SUCCESS`가 아니면 실패로 다뤄요. 토스 4095는 우리 429, 4011은 위 R-6이에요. 토스 한도를 우리 한도 오류로 바꾸는 것은 이 두 곳뿐이에요. | F-4, F-6 |
 | R-10 | 방장 응답 현황(SPEC-017)은 따로 두지 않고 API-004의 `partySize`·`submittedCount`로 보여요. 방 소개도 응답 완료 수를 보이므로 방장만의 값이 없어요. | SPEC-006, SPEC-017 |
 | R-11 | 참여자 수는 내보내지 않고 `isFull`(8명인지)만 내보내요. | SPEC-006 [노출]: 화면이 알릴 것은 "8명이 다 찼어요"뿐 |
-| R-12 | 내 방 목록(API-012)은 `roomCode`를 내보내요. 화면에는 보이지 않고 방 API를 부르는 데만 써요. | Open: 06 질문 3 |
+| R-12 | 내 방 목록(API-012)은 `roomCode`를 내보내요. 화면에는 보이지 않고 방 API를 부르는 데만 써요. | 06 질문 3 → DEC-025. 조건: 화면은 방 코드를 기기 로그(console, `Analytics.log` 파라미터, 오류 보고)에 남기지 않아요 |
 
 ## 6. 검사 결과 (2026-11-28)
 

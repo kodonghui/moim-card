@@ -1,6 +1,6 @@
 # 모임 합의 카드(가칭): ERD (05)
 
-상태: **초안, 체크포인트 대기**(2026-11-28) · 원본: [db/schema.sql](../../db/schema.sql)(TBL-001~015) · 마이그레이션: [db/migrations/0001_init.sql](../../db/migrations/0001_init.sql) · 체크포인트 질문: [checkpoint-05.md](checkpoint-05.md)
+상태: **스키마 고정, 체크포인트 통과**(2026-11-28, DEC-022) · 원본: [db/schema.sql](../../db/schema.sql)(TBL-001~015) · 마이그레이션: [db/migrations/0001_init.sql](../../db/migrations/0001_init.sql) · 체크포인트 질문: [checkpoint-05.md](checkpoint-05.md)
 
 - 입력: [04 기능 명세](../04-functional-spec/spec.md)(SPEC-001~039, DEC-016·020), [01 도메인 설계](../01-domain/domain.md)의 애그리거트 규칙과 용어집(TERM-001~046).
 - 데이터베이스: Cloudflare D1(SQLite)이에요. 테이블은 모두 `STRICT`이고, 외래 키는 D1이 기본으로 지켜요. 한 요청의 여러 쓰기는 D1 batch 하나(트랜잭션 하나)로 보내요(C-4).
