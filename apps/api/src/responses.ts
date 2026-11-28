@@ -4,11 +4,11 @@ import {idempotent} from './idempotency';
 import {findSessionUser} from './session';
 import {writeLimitReservation, writeLimitDenied} from './rate-limit';
 
-type Room = {id:number;status:string;participantId:number|null;responseId:number|null;submittedCount:number;partySize:number;conversionLogged:number;setId:number;defaultAction:string};
+type Room = {id:number;status:string;role:string|null;closeReason:'all_submitted'|'host_closed'|'host_deleted'|null;participantId:number|null;responseId:number|null;submittedCount:number;partySize:number;conversionLogged:number;setId:number;defaultAction:string};
 type Question = CardQuestion & {axis:Axis|null;axisPoleA:'low'|'high'|null};
 type Plan = {status:number;body:unknown;statements:D1PreparedStatement[];headers?:Record<string,string>};
 const CODE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{10}$/;
-async function problem(code: 'invalid_request'|'validation_failed'|'room_not_found'|'not_participant'|'room_closed'|'already_submitted', errors?:unknown[]): Promise<Plan> {
+async function problem(code: 'invalid_request'|'validation_failed'|'room_not_found'|'not_participant'|'room_closed'|'already_submitted'|'not_host'|'not_enough_responses', errors?:unknown[]): Promise<Plan> {
   const r=problemResponse(code); const body=await r.json() as Record<string,unknown>;
   return {status:r.status,body:errors?{...body,errors}:body,statements:[]};
 }
@@ -30,7 +30,7 @@ function parseAnswers(value: unknown): {answers:Answer[]} | {errors:unknown[]} {
 }
 async function readRoom(db:D1Database,user:string,code:string,now:number):Promise<Room|null> {
  return db.prepare(`SELECT r.id,r.status,r.submitted_count AS submittedCount,r.party_size AS partySize,r.conversion_logged AS conversionLogged,
- r.question_set_id AS setId,q.default_next_action AS defaultAction,p.id AS participantId,resp.participant_id AS responseId
+ r.question_set_id AS setId,q.default_next_action AS defaultAction,p.id AS participantId,p.role AS role,r.close_reason AS closeReason,resp.participant_id AS responseId
  FROM rooms r JOIN question_sets q ON q.id=r.question_set_id LEFT JOIN participants p ON p.room_id=r.id AND p.user_id=?
  LEFT JOIN responses resp ON resp.participant_id=p.id WHERE r.code=? AND r.expires_at>?`).bind(user,code,now).first<Room>();
 }
@@ -175,4 +175,44 @@ export async function getCard(request:Request,db:D1Database,now=Math.floor(Date.
   return Response.json(await renderStoredCard(db,latest,card,now));
  }
  throw new Error('Concurrent card reads did not settle');
+}
+
+export async function closeRoom(request:Request,db:D1Database,now=Math.floor(Date.now()/1000)):Promise<Response> {
+ const user=await findSessionUser(db,request.headers.get('Authorization')??undefined,now);if(!user)return problemResponse('unauthenticated');
+ const path=new URL(request.url).pathname,code=path.split('/')[3]??'',text=await request.text(),key=request.headers.get('Idempotency-Key');
+ const fingerprint=JSON.stringify([request.method,path,text]);
+ const state:{room:Room|null}={room:null};
+ for(let attempt=0;attempt<10;attempt++){
+  try{return await idempotent(db,user,key,'POST closeRoom',fingerprint,now,async()=>{
+   if(text.length>0)return problem('invalid_request');
+   if(!CODE.test(code))return problem('room_not_found');
+   state.room=await readRoom(db,user,code,now);const room=state.room;
+   if(!room)return problem('room_not_found');
+   if(room.role!=='host')return problem('not_host');
+   if(room.status==='closed'){
+    const card=await db.prepare('SELECT stage,based_on_count AS basedOnCount,items,next_action AS nextAction,finalized_at AS finalizedAt FROM consensus_cards WHERE room_id=?').bind(room.id).first<StoredCard>();
+    return {status:200,body:{roomStatus:'closed',closeReason:room.closeReason,card:await renderStoredCard(db,room,card,now)},statements:[]};
+   }
+   if(room.submittedCount<2)return problem('not_enough_responses');
+   const denied=await writeLimitDenied(db,user,now);if(denied)return {status:429,body:await denied.json(),headers:{'Retry-After':denied.headers.get('Retry-After')!},statements:[]};
+   const [questions,answers]=await Promise.all([readQuestions(db,room.setId),readAnswers(db,room.id)]);
+   if(answers.length!==room.submittedCount)throw new Error('stale_close_snapshot');
+   const calculated=calculateCard(questions,answers,room.defaultAction);
+   const card={stage:'final',basedOnCount:room.submittedCount,partySize:room.partySize,items:calculated.items,nextAction:calculated.nextAction,finalizedAt:new Date(now*1000).toISOString(),asOf:new Date(now*1000).toISOString()};
+   return {status:200,body:{roomStatus:'closed',closeReason:'host_closed',card},statements:[
+    db.prepare("UPDATE rooms SET status=CASE WHEN status='open' AND submitted_count=? AND expires_at>? THEN 'closed' ELSE NULL END,close_reason='host_closed',closed_at=? WHERE id=?").bind(room.submittedCount,now,now,room.id),
+    db.prepare("INSERT INTO consensus_cards(room_id,stage,based_on_count,items,next_action,computed_at,finalized_at) VALUES(?,'final',?,?,?,?,?) ON CONFLICT(room_id) DO UPDATE SET stage='final',based_on_count=excluded.based_on_count,items=excluded.items,next_action=excluded.next_action,computed_at=excluded.computed_at,finalized_at=excluded.finalized_at WHERE consensus_cards.stage='interim'").bind(room.id,room.submittedCount,serializedItems(calculated.items),calculated.nextAction,now,now),
+    db.prepare("INSERT INTO past_cards(user_id,room_ref,gathering_name,theme_name,based_on_count,summary,next_action,finalized_at) SELECT p.user_id,r.id,r.gathering_name,t.name,?,?,?,? FROM rooms r JOIN question_sets q ON q.id=r.question_set_id JOIN themes t ON t.id=q.theme_id JOIN participants p ON p.room_id=r.id JOIN responses x ON x.participant_id=p.id WHERE r.id=?").bind(room.submittedCount,JSON.stringify(calculated.items),calculated.nextAction,now,room.id),
+    db.prepare('DELETE FROM notification_subscriptions WHERE room_id=?').bind(room.id),
+    writeLimitReservation(db,user,now),
+   ]};
+  });} catch(error){
+   if(error instanceof Error && error.message.includes('stale_close_snapshot'))continue;
+   const current=CODE.test(code)?await readRoom(db,user,code,now):null;
+   if(state.room && (!current || current.status!==state.room.status || current.submittedCount!==state.room.submittedCount))continue;
+   const denied=await writeLimitDenied(db,user,now);if(denied)return denied;
+   throw error;
+  }
+ }
+ throw new Error('Concurrent room close did not settle');
 }
