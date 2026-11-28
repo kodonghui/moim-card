@@ -52,7 +52,7 @@ def run():
                 # Test deletion last so it cannot invalidate the other operations' session.
                 token = session(base)
                 checks = 'not_a_server_error,status_code_conformance,content_type_conformance,response_headers_conformance,response_schema_conformance'
-                common = [str(Path(sys.executable).parent / 'schemathesis'), 'run', 'api/openapi.yaml', '--experimental', 'openapi-3.1', '--base-url', base, '--header', f'Origin: {ORIGIN}', '--header', f'Authorization: Bearer {token}', '--checks', checks, '--hypothesis-max-examples', '5', '--hypothesis-deadline', '5000', '--hypothesis-seed', '109', '--sanitize-output', 'true']
+                common = [sys.executable, '-c', 'from schemathesis.cli import schemathesis; schemathesis()', 'run', 'api/openapi.yaml', '--experimental', 'openapi-3.1', '--base-url', base, '--header', f'Origin: {ORIGIN}', '--header', f'Authorization: Bearer {token}', '--checks', checks, '--hypothesis-max-examples', '5', '--hypothesis-deadline', '5000', '--hypothesis-seed', '109', '--sanitize-output', 'true']
                 for selection in (['--exclude-operation-id', 'deleteMyData'], ['--include-operation-id', 'deleteMyData']):
                     result = subprocess.run(common + selection, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
                     print(result.stdout.replace(token, '[redacted]'), flush=True)
