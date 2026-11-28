@@ -129,3 +129,13 @@ describe.skipIf(!process.env.PRISM_URL)('Prism 공통 응답', () => {
     await expect(client.operation('/v1/sessions', { method: 'POST', authenticated: false, body: { authCode: 'example' } })()).rejects.toMatchObject({ problem: { status: 429, code: 'rate_limited' }, retryAfter: 30 });
   });
 });
+
+describe.skipIf(!process.env.PRISM_URL)('API-012 목 서버', () => {
+  it('Bearer 인증으로 내 방 목록을 읽는다', async () => {
+    const client = new ApiClient({ baseUrl: process.env.PRISM_URL!, reauthenticate: vi.fn() });
+    client.setToken('q8Xk2v0mZtR5bN1cY7wLp3sH9dF4gJ6aE2uC0oI8kT1');
+    const data = await client.operation<{ rooms: unknown[]; asOf: string }>('/v1/me/rooms')();
+    expect(Array.isArray(data.rooms)).toBe(true);
+    expect(data.asOf).toBeTruthy();
+  });
+});

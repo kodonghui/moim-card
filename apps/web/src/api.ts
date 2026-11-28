@@ -83,7 +83,9 @@ export function onVisible(refresh: () => void): () => void {
   return () => document.removeEventListener('visibilitychange', listener);
 }
 export function formatAsOf(value: string): string {
-  return `${new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit' }).format(new Date(value))} 기준`;
+  const parts = new Intl.DateTimeFormat('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true }).formatToParts(new Date(value));
+  const get = (type: string) => parts.find(part => part.type === type)?.value || '';
+  return `${get('dayPeriod')} ${get('hour')}시 ${Number(get('minute'))}분 기준`;
 }
 
 export function retrySeconds(retryAfter: number, receivedAt: number, now = Date.now()): number {
