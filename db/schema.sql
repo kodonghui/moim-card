@@ -69,6 +69,7 @@ CREATE TABLE question_sets (
 -- TBL-005 questions 문항 (CTX-002) ← SPEC-010, SPEC-011, SPEC-012, SPEC-013, SPEC-031 | terms: TERM-009, TERM-010, TERM-021, TERM-022, TERM-024, TERM-041, TERM-038
 -- 규칙: 세트마다 문항 8개(position 1~8). "8개 모두 있음"은 형식 검사 스크립트가 봐요(SPEC-031).
 -- 규칙: 성향 축은 없을 수 있어요. 축이 있으면 선택지 A가 그 축의 어느 쪽인지(axis_pole_a)도 있어야 해요(축 매핑, TERM-041).
+--   높은 쪽 선택지(SPEC-031, DEC-039)는 axis_pole_a가 'high'면 A, 'low'면 B예요. 계산은 높은 쪽 +1, 반대 −1, 상관없어요 0(SPEC-012).
 -- 리드 모델 문항 화면(TERM-038)은 방에 고정된 question_set_id의 문항 8개예요.
 CREATE TABLE questions (
   question_set_id  INTEGER NOT NULL REFERENCES question_sets (id) ON DELETE RESTRICT,
@@ -258,4 +259,15 @@ CREATE TABLE entry_stats (
   referrer_kind TEXT    NOT NULL CHECK (referrer_kind IN ('external_share', 'other')),
   count         INTEGER NOT NULL CHECK (count >= 0),
   PRIMARY KEY (day, referrer_kind)
+) STRICT;
+
+-- TBL-016 profile_phrases 성향 문구 (CTX-002) ← SPEC-012, SPEC-031 | terms: TERM-024
+-- 규칙: 문항 세트 버전마다 성향 문구 7개예요: 축 3개마다 '낮음'·'높음' 문구와 '균형' 문구 1개(DEC-039). "7개 모두 있음"은 형식 검사 스크립트가 봐요(SPEC-031).
+-- 규칙: 한 줄 설명(SPEC-012)은 이 7개 중 하나예요. 길이는 06 PersonalProfile.summary와 같은 60자예요.
+-- 규칙: 배포 스크립트가 TBL-004·TBL-005와 같은 batch에서 넣어요. 방이 쓰는 세트는 지울 수 없어요(RESTRICT).
+CREATE TABLE profile_phrases (
+  question_set_id INTEGER NOT NULL REFERENCES question_sets (id) ON DELETE RESTRICT,
+  slot            TEXT    NOT NULL CHECK (slot IN ('plan_speed_low', 'plan_speed_high', 'spending_priority_low', 'spending_priority_high', 'schedule_change_low', 'schedule_change_high', 'balanced')),
+  phrase          TEXT    NOT NULL CHECK (length(phrase) BETWEEN 1 AND 60),
+  PRIMARY KEY (question_set_id, slot)
 ) STRICT;

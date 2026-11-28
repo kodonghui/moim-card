@@ -125,6 +125,10 @@ if from_schema is not None:
         db.execute("INSERT INTO questions VALUES (1, ?, '문항', 'A', 'B', '조율', '확정A', '확정B', NULL, NULL)", (p,))
     expect_error(db, "INSERT INTO questions VALUES (1, 9, '문항', 'A', 'B', '조율', '확정A', '확정B', NULL, NULL)", (), "문항 번호 9")
     expect_error(db, "INSERT INTO questions VALUES (1, 1, '문항', 'A', 'B', '조율', '확정A', '확정B', 'plan_speed', NULL)", (), "축만 있고 축 방향이 없는 문항(축 매핑)")
+    db.execute("INSERT INTO profile_phrases VALUES (1, 'balanced', '균형 문구')")
+    expect_error(db, "INSERT INTO profile_phrases VALUES (1, 'balanced', '다른 문구')", (), "같은 세트의 같은 성향 문구 자리 두 번(SPEC-031)")
+    expect_error(db, "INSERT INTO profile_phrases VALUES (1, 'plan_speed_mid', '문구')", (), "알 수 없는 성향 문구 자리(SPEC-031)")
+    expect_error(db, "INSERT INTO profile_phrases VALUES (1, 'plan_speed_low', '')", (), "빈 성향 문구(SPEC-031)")
     room = "INSERT INTO rooms (code, gathering_name, party_size, question_set_id, created_at, expires_at) VALUES (?, ?, ?, 1, ?, ?)"
     db.execute(room, ("ABCDEFGH23", "제주 3박", 4, now, now + 2592000))
     expect_error(db, room, ("ABCDEFGH0O", "x", 4, now, now + 2592000), "0·O가 든 방 코드(C-5)")
@@ -327,6 +331,7 @@ LIMITS = [
     ("CardItem.optionA", "questions", "option_a", 1, 30),
     ("CardItem.text", "questions", "split_suggestion", 1, 60),
     ("PastCardPage.nextAction", "past_cards", "next_action", 1, 60),
+    ("PersonalProfile.summary", "profile_phrases", "phrase", 1, 60),
 ]
 for where, table, column, lo, hi in LIMITS:
     schema_name, field = where.split(".")

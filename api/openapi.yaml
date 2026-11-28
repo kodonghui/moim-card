@@ -874,6 +874,7 @@ paths:
         - TBL-012
         - TBL-013
         - TBL-014
+        - TBL-016
         omit: {}
         cases:
           concurrency: 인원 4·응답 3에 두 사람이 한꺼번에 내면 한 명만 201, 다른 사람은 409 room_closed(C-4)
@@ -1092,7 +1093,7 @@ paths:
     get:
       operationId: getMyProfile
       summary: 내 모임 성향
-      description: 내 응답과 방의 축 매핑으로 열 때마다 계산해요. 저장하지 않아요(TERM-023). 묶인 문항이 0개인 축은 빼요. 점수 숫자·유형 이름은 없어요.
+      description: 내 응답과 방의 축 매핑으로 열 때마다 계산해요. 저장하지 않아요(TERM-023). 묶인 문항이 0개인 축은 빼요. 점수 숫자·유형 이름은 없어요. 구간과 한 줄 설명(TBL-016 성향 문구 중 하나)의 규칙은 SPEC-012예요(DEC-039).
       x-corthex:
         id: API-008
         spec:
@@ -1101,6 +1102,7 @@ paths:
         - TBL-005
         - TBL-007
         - TBL-008
+        - TBL-016
         omit:
           '400': 형식이 틀린 방 코드도 404예요(C-5)
           '409': 읽기만 해요
@@ -3037,7 +3039,7 @@ components:
           type: string
           minLength: 1
           maxLength: 60
-          description: 한 줄 설명. 점수·유형 이름 없음
+          description: 한 줄 설명. 방 문항 세트의 성향 문구(TBL-016) 7개 중 하나(SPEC-012, DEC-039). 점수·유형 이름 없음
         axes:
           type: array
           maxItems: 3
