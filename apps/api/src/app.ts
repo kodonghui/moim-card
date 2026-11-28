@@ -15,9 +15,7 @@ function matches(pattern: string, path: string): boolean {
   return a.length === b.length && a.every((part, i) => part.startsWith(':') ? b[i].length > 0 : part === b[i]);
 }
 
-export function createApi(origins: readonly [string, string], routes: Route[] = [], log: Log = entry => console.error(JSON.stringify(entry))) {
-  const app = new Hono();
-  const problem = (code: ErrorCode, headers: Record<string, string> = {}) => {
+export function problemResponse(code: ErrorCode, log: Log = entry => console.error(JSON.stringify(entry)), headers: Record<string, string> = {}): Response {
     const bytes = crypto.getRandomValues(new Uint8Array(8));
     const traceId = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
     const { status, title } = errorCatalog[code];
@@ -25,7 +23,11 @@ export function createApi(origins: readonly [string, string], routes: Route[] = 
     return new Response(JSON.stringify({ type: 'about:blank', title, status, code, traceId }), {
       status, headers: { 'content-type': 'application/problem+json', ...headers },
     });
-  };
+}
+
+export function createApi(origins: readonly [string, string], routes: Route[] = [], log: Log = entry => console.error(JSON.stringify(entry))) {
+  const app = new Hono();
+  const problem = (code: ErrorCode, headers: Record<string, string> = {}) => problemResponse(code, log, headers);
   app.use('*', async (c, next) => {
     const origin = c.req.header('Origin');
     if (!origin || !origins.includes(origin)) return problem('origin_not_allowed');
