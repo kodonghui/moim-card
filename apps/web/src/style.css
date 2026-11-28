@@ -80,3 +80,11 @@ div[role="alert"] h2 { font-size: var(--font-size-heading); margin: 0; }
 .questions .create-action button:disabled span { color: var(--color-disabled-text) !important; }
 
 .entry-actions button:disabled, .create-action button:disabled { opacity: 1 !important; }
+
+.questions header { position: sticky; top: 0; z-index: 2; background: var(--color-bg-page); padding: var(--space-3) 0; }
+.questions header p { margin: var(--space-1) 0; color: var(--color-text-secondary); }
+.questions progress { display: block; width: 100%; height: var(--space-2); accent-color: var(--color-accent-default); }
+.choice { display: flex; align-items: center; gap: var(--space-3); }
+.choice-dot { width: var(--space-4); height: var(--space-4); flex: none; box-sizing: border-box; border-width: 1px; border-style: solid; border-color: var(--color-border-control); border-radius: var(--radius-pill); }
+.choice[aria-pressed="true"] { border-width: 2px; font-weight: var(--font-weight-bold); }
+.choice[aria-pressed="true"] .choice-dot { background: var(--color-accent-default); border-color: var(--color-accent-default); }
