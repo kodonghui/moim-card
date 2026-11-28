@@ -63,8 +63,12 @@ def build(scripts):
 
 
 def master(db):
+    # SQLite quotes identifiers introduced by ALTER TABLE RENAME; these names
+    # are equivalent to the same unquoted simple identifiers in schema.sql.
+    def canonical(sql):
+        return re.sub(r'"([A-Za-z_][A-Za-z_0-9]*)"', r'\1', re.sub(r"\s+", " ", sql or "").strip())
     return sorted(
-        (t, n, tbl, re.sub(r"\s+", " ", sql or "").strip())
+        (t, n, tbl, canonical(sql))
         for t, n, tbl, sql in db.execute("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%'")
     )
 
