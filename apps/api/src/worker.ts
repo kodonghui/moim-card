@@ -3,7 +3,7 @@ import { createApi } from './app';
 import { createSession, type SessionEnv } from './create-session';
 import { listThemes } from './themes';
 import { requireSession } from './session';
-import { createRoom, getRoom } from './rooms';
+import { createRoom, getRoom, joinRoom } from './rooms';
 
 interface Env extends SessionEnv { ORIGIN_PUBLIC: string; ORIGIN_PRIVATE: string }
 export default {
@@ -13,6 +13,7 @@ export default {
       {method:'GET', path:'/v1/themes', middleware: requireSession(env.DB), handler: () => listThemes(env.DB)},
       {method:'POST', path:'/v1/rooms', handler: req => createRoom(req, env.DB)},
       {method:'GET', path:'/v1/rooms/:roomCode', handler: req => getRoom(req, env.DB)},
+      {method:'POST', path:'/v1/rooms/:roomCode/participants', handler: req => joinRoom(req, env.DB)},
     ]).fetch(request);
   },
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {

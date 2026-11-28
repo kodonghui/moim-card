@@ -1,13 +1,13 @@
 import { env } from 'cloudflare:test';
 import { describe, expect, it, vi } from 'vitest';
-import { checkLimit, withTossLimit } from '../src/rate-limit';
+import { checkLimit, withTossLimit, writeLimitDenied, writeLimitReservation } from '../src/rate-limit';
 const user = 'a'.repeat(26), now = 172801, minute = Math.floor(now / 60) * 60;
 const seed = (scope: string, subject: string, start: number, count: number) => env.DB.prepare('INSERT INTO rate_counters VALUES (?,?,?,?)').bind(scope,subject,start,count).run();
 const snapshot = async () => (await env.DB.prepare('SELECT * FROM rate_counters ORDER BY scope').all()).results;
 describe('TASK-007 rate limits', () => {
   it('rejects the 61st write with retry-after and no counter change', async () => {
     await seed('write',user,minute,60); const before = await snapshot();
-    const result = await checkLimit(env.DB,'write',user,now);
+    const result = await writeLimitDenied(env.DB,user,now);
     expect(result?.status).toBe(429); expect(result?.headers.get('retry-after')).toBe(String(minute + 60 - now));
     expect(await snapshot()).toEqual(before);
   });
@@ -51,8 +51,10 @@ describe('TASK-007 rate limits', () => {
     const rows = await snapshot();
     expect(rows).toEqual([{scope:'room_create',subject:user,window_start:now,count:1}]);
     await seed('write', user, minute + 60, 60);
-    expect((await checkLimit(env.DB, 'write', user, minute + 60))?.status).toBe(429);
-    expect(await checkLimit(env.DB, 'write', user, minute + 120)).toBeNull();
+    expect((await writeLimitDenied(env.DB, user, minute + 60))?.status).toBe(429);
+    expect(await writeLimitDenied(env.DB, user, minute + 120)).toBeNull();
+    await env.DB.batch([writeLimitReservation(env.DB,user,minute+120)]);
+    expect((await env.DB.prepare("SELECT count FROM rate_counters WHERE scope='write' AND subject=? AND window_start=?").bind(user,minute+120).first<{count:number}>())?.count).toBe(1);
   });
   it('allows just one simultaneous request into the final app slot', async () => {
     await seed('toss_api_app','app',minute,2999);
