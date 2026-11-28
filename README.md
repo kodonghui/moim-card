@@ -10,6 +10,7 @@ Node.js 22와 Corepack을 준비한 뒤 저장소 루트에서 실행해요.
 
 ```sh
 corepack enable
+python3 -m pip install -r requirements-checks.txt
 pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm test

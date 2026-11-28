@@ -15,15 +15,36 @@ importers:
         specifier: 3.2.4
         version: 3.2.4(@types/node@26.6.11)(jiti@2.7.0)
 
-  apps/api: {}
+  apps/api:
+    devDependencies:
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4(@types/node@26.6.11)(jiti@2.7.0)
 
   apps/web:
     dependencies:
       '@apps-in-toss/web-framework':
         specifier: 3.11.0
         version: 3.11.0(typanion@3.14.0)(typescript@5.8.3)
+    devDependencies:
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4(@types/node@26.6.11)(jiti@2.7.0)
 
-  packages/shared: {}
+  packages/shared:
+    devDependencies:
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: 3.2.4
+        version: 3.2.4(@types/node@26.6.11)(jiti@2.7.0)
 
 packages:
 
