@@ -1,5 +1,5 @@
-// The client has no general-purpose log or error reporter. The only permitted
-// analytics event has no parameters, so room codes cannot be attached to it.
+// Restrict client logging to a constant diagnostic and one parameter-free event.
+// Inspect references as well as calls so aliases cannot bypass the rule.
 const ts = require('typescript');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -14,16 +14,38 @@ function walk(dir) {
 }
 function check(file) {
   const source = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, file.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  function isDirectCall(id, method) {
+    const access = id.parent;
+    if (!ts.isPropertyAccessExpression(access) || access.expression !== id || access.name.text !== method || access.questionDotToken) return null;
+    const call = access.parent;
+    return ts.isCallExpression(call) && call.expression === access && !call.questionDotToken ? call : null;
+  }
+  function safeDiagnostic(id) {
+    const call = isDirectCall(id, 'error');
+    return call && call.arguments.length === 1 && ts.isStringLiteral(call.arguments[0]) && call.arguments[0].text === 'client request error';
+  }
+  function safeAnalytics(id) {
+    if (ts.isImportSpecifier(id.parent) && id.parent.name === id && !id.parent.propertyName) return true;
+    const call = isDirectCall(id, 'log');
+    if (!call || call.arguments.length !== 1) return false;
+    const arg = call.arguments[0];
+    if (ts.isStringLiteral(arg)) return arg.text === 'interim_card_created';
+    if (!ts.isObjectLiteralExpression(arg) || arg.properties.length !== 3 || !arg.properties.every(ts.isPropertyAssignment)) return false;
+    const props = arg.properties;
+    return props.some(p => p.name.getText(source) === 'log_name' && ts.isStringLiteral(p.initializer) && p.initializer.text === 'interim_card_created') &&
+      props.some(p => p.name.getText(source) === 'log_type' && ts.isStringLiteral(p.initializer) && p.initializer.text === 'event') &&
+      props.some(p => p.name.getText(source) === 'params' && ts.isObjectLiteralExpression(p.initializer) && p.initializer.properties.length === 0);
+  }
+  function fail(node) {
+    process.stderr.write(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}: prohibited logging reference\n`); errors++;
+  }
   function visit(node) {
-    if (ts.isCallExpression(node)) {
-      const callee = node.expression.getText(source);
-      const allowed = callee === 'Analytics.log' && node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]) && node.arguments[0].text === 'interim_card_created';
-      const allowedStaticError = callee === 'console.error' && node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]) && node.arguments[0].text === 'client request error';
-      if (/^(console(?:\.|\[)|Analytics\.log$|reportError$|captureException$)/.test(callee) && !allowed && !allowedStaticError) {
-        process.stderr.write(`${file}:${source.getLineAndCharacterOfPosition(node.getStart()).line + 1}: prohibited logging call\n`);
-        errors++;
-      }
+    if (ts.isIdentifier(node)) {
+      if (node.text === 'console' && !safeDiagnostic(node)) fail(node);
+      else if (node.text === 'Analytics' && !safeAnalytics(node)) fail(node);
+      else if (['reportError', 'captureException', 'eventLog'].includes(node.text)) fail(node);
     }
+    if (ts.isElementAccessExpression(node) && ts.isStringLiteral(node.argumentExpression) && ['console', 'Analytics', 'reportError', 'captureException', 'eventLog'].includes(node.argumentExpression.text)) fail(node);
     ts.forEachChild(node, visit);
   }
   visit(source);

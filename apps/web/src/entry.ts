@@ -30,7 +30,7 @@ export async function startEntry(deps: {
     const authCode = await deps.authCode();
     const session = await deps.client.operation<{ sessionToken: string }>('/v1/sessions', { method: 'POST', authenticated: false, body: { authCode } })();
     deps.client.setToken(session.sessionToken);
-    try { await deps.client.operation('/v1/entries', { method: 'POST', retryAuthentication: false, body: { referrerKind: deps.referrerKind } })(); } catch { /* entry analytics must not block the user */ }
+    void deps.client.operation('/v1/entries', { method: 'POST', retryAuthentication: false, body: { referrerKind: deps.referrerKind } })().catch(() => {});
     deps.navigate(deps.room ? '/room' : '/home');
   } catch (error) {
     if (error instanceof ApiError && error.problem.status === 403 && error.problem.code === 'origin_not_allowed') deps.onState({ kind: 'permission' });

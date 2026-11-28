@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { createHash } from 'node:crypto';
 
@@ -16,9 +16,17 @@ function provenance(): Plugin {
     },
   };
 }
-export default defineConfig({
+export default defineConfig(({ command, mode }) => {
+  if (command === 'build') {
+    const api = loadEnv(mode, process.cwd(), 'VITE_').VITE_API_BASE_URL;
+    if (!api) throw new Error('VITE_API_BASE_URL is required for production builds');
+    try { if (new URL(api).protocol !== 'https:') throw new Error('not HTTPS'); }
+    catch { throw new Error('VITE_API_BASE_URL must be an HTTPS URL'); }
+  }
+  return {
   plugins: [react(), provenance()],
   build: { rollupOptions: { output: { onlyExplicitManualChunks: true, manualChunks(id) {
     if (isTds(id)) return 'tds-vendor';
   } } } },
+  };
 });
