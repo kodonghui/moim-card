@@ -139,3 +139,37 @@ export async function getMyProfile(request:Request,db:D1Database,now=Math.floor(
  const questions=await readQuestions(db,room.setId);
  return Response.json(await profile(db,room.setId,questions,[...stored.answers] as Answer[]));
 }
+
+type StoredCard = {stage:'interim'|'final';basedOnCount:number;items:string;nextAction:string;finalizedAt:number|null};
+/** Render only the stored counts; a finalized card never depends on present-day responses. */
+export async function renderStoredCard(db:D1Database,room:Room,card:StoredCard|null,now:number) {
+ const common={partySize:room.partySize,asOf:new Date(now*1000).toISOString()};
+ if(!card)return {stage:'none',basedOnCount:room.submittedCount,items:[],nextAction:null,finalizedAt:null,...common};
+ const questions=await readQuestions(db,room.setId);
+ const stored=JSON.parse(card.items) as {position:number;a:number;b:number;none:number;category:'agreed'|'split'|'open'}[];
+ if(!Array.isArray(stored)||stored.length!==8)throw new Error('Stored card incomplete');
+ const items=stored.map((item,index)=>{
+  const q=questions[index];if(item.position!==q.position)throw new Error('Stored card position mismatch');
+  const text=item.category==='split'?q.splitSuggestion:item.category==='open'?'누구나 괜찮아요':item.a?q.agreedTextA:q.agreedTextB;
+  return {position:item.position,prompt:q.prompt,optionA:q.optionA,optionB:q.optionB,category:item.category,countA:item.a,countB:item.b,countNone:item.none,text};
+ });
+ return {stage:card.stage,basedOnCount:card.basedOnCount,items,nextAction:card.nextAction,finalizedAt:card.finalizedAt===null?null:new Date(card.finalizedAt*1000).toISOString(),...common};
+}
+export async function getCard(request:Request,db:D1Database,now=Math.floor(Date.now()/1000)):Promise<Response> {
+ const user=await findSessionUser(db,request.headers.get('Authorization')??undefined,now);if(!user)return problemResponse('unauthenticated');
+ const code=new URL(request.url).pathname.split('/')[3]??'';if(!CODE.test(code))return problemResponse('room_not_found');
+ for(let attempt=0;attempt<10;attempt++){
+  const room=await readRoom(db,user,code,now);if(!room)return problemResponse('room_not_found');
+  if(room.status==='open'){
+   if(!room.participantId)return problemResponse('not_participant');
+   if(!room.responseId)return problemResponse('response_required');
+   if(room.submittedCount>=2)await readFreshInterimCard(db,room.id,now);
+  }
+  const latest=await readRoom(db,user,code,now);if(!latest)return problemResponse('room_not_found');
+  if(latest.status!==room.status||latest.submittedCount!==room.submittedCount)continue;
+  const card=await db.prepare('SELECT stage,based_on_count AS basedOnCount,items,next_action AS nextAction,finalized_at AS finalizedAt FROM consensus_cards WHERE room_id=?').bind(room.id).first<StoredCard>();
+  if(latest.status==='open'&&latest.submittedCount>=2&&(!card||card.stage!=='interim'||card.basedOnCount!==latest.submittedCount))continue;
+  return Response.json(await renderStoredCard(db,latest,card,now));
+ }
+ throw new Error('Concurrent card reads did not settle');
+}
