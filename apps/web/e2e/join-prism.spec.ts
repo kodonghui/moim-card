@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
+import { mockDestinations } from './destinations';
+test.beforeEach(async ({ page }) => { await mockDestinations(page); });
 test.use({ viewport: { width: 360, height: 800 } });
 type Selection = { code: number; example?: string; delay?: number };
 async function mockPrism(page: Page, method: 'GET' | 'POST', choices: Selection[]) {
@@ -43,7 +45,7 @@ for (const [code, heading] of [[403, '지금은 쓸 수 없어요'], [404, '이 
 });
 test('마감된 방과 이미 응답한 참여자는 정의된 화면으로 이동한다', async ({ page }) => {
   await mockPrism(page, 'GET', [{ code: 200, example: 'closed' }]); await page.goto('/room?room=ABCDEFGH23'); await expect(page).toHaveURL(/\/room\/final$/);
-  await page.unrouteAll(); await mockPrism(page, 'GET', [{ code: 200, example: 'open-host' }]);
+  await page.unrouteAll(); await mockDestinations(page); await mockPrism(page, 'GET', [{ code: 200, example: 'open-host' }]);
   await page.goto('/room?room=ABCDEFGH23'); await expect(page).toHaveURL(/\/room\/result$/);
 });
 test('Prism 201 입장은 문항으로 이동한다', async ({ page }) => {

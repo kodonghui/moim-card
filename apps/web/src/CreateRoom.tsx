@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '@toss/tds-mobile';
 import { ApiError } from './api';
 import { entryContext } from './entry-context';
+import { roomContext } from './room-context';
 import { validateGatheringName, validateNickname } from './names';
 import { roomDraft, type Theme } from './room-draft';
 import { navigate } from './routes';
@@ -43,7 +44,7 @@ export function RoomDetails() {
     setLoading(true); setError(undefined); setErrors({});
     try {
       operation.current ??= client.operation<{ roomCode: string }>('/v1/rooms', { method: 'POST', idempotent: true, body: { themeId: roomDraft.theme.themeId, gatheringName: nameValid.value, partySize: size, hostNickname: nickValid.value } });
-      const result = await operation.current(); entryContext.room = result.roomCode; navigate('/room/questions', true);
+      const result = await operation.current(); entryContext.room = result.roomCode; roomContext.name = nameValid.value; roomContext.nickname = nickValid.value; roomContext.nicknameRoom = result.roomCode; navigate('/room/questions', true);
     } catch (err) {
       if (err instanceof ApiError && err.problem.code === 'origin_not_allowed') setPermission(true);
       else if (err instanceof ApiError && ['unauthenticated', 'reauthentication_failed'].includes(err.problem.code)) { sessionState.reauthenticationFailed = true; navigate('/', true); }

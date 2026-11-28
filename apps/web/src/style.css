@@ -69,3 +69,22 @@ div[role="alert"] { background: var(--color-feedback-error-bg); border-radius: v
 .create .menu-button { display: flex; justify-content: space-between; }
 .room-notice { background: var(--color-bg-subtle); color: var(--color-text-primary); padding: var(--space-4); border-radius: var(--radius-box); }
 div[role="alert"] h2 { font-size: var(--font-size-heading); margin: 0; }
+
+.questions { display: flex; flex-direction: column; gap: var(--space-6); }
+.questions h1 { font-size: var(--font-size-heading); margin: 0; }
+.questions fieldset { display: flex; flex-direction: column; gap: var(--space-2); padding: 0; margin: 0; border: 0; }
+.questions legend { font-weight: var(--font-weight-bold); padding: 0; margin: var(--space-4) 0; }
+.choice { min-height: var(--size-touch); text-align: left; font: inherit; color: var(--color-text-primary); background: var(--color-bg-page); border-width: 1px; border-style: solid; border-color: var(--color-border-control); border-radius: var(--radius-button); padding: var(--space-3); }
+.choice[aria-pressed="true"] { background: var(--color-accent-subtle); border-color: var(--color-accent-default); }
+.questions .create-action button:disabled > div:first-child { background-color: var(--color-disabled-bg) !important; }
+.questions .create-action button:disabled span { color: var(--color-disabled-text) !important; }
+
+.entry-actions button:disabled, .create-action button:disabled { opacity: 1 !important; }
+
+.questions header { position: sticky; top: 0; z-index: 2; background: var(--color-bg-page); padding: var(--space-3) 0; }
+.questions header p { margin: var(--space-1) 0; color: var(--color-text-secondary); }
+.questions progress { display: block; width: 100%; height: var(--space-2); accent-color: var(--color-accent-default); }
+.choice { display: flex; align-items: center; gap: var(--space-3); }
+.choice-dot { width: var(--space-4); height: var(--space-4); flex: none; box-sizing: border-box; border-width: 1px; border-style: solid; border-color: var(--color-border-control); border-radius: var(--radius-pill); }
+.choice[aria-pressed="true"] { border-width: 2px; font-weight: var(--font-weight-bold); }
+.choice[aria-pressed="true"] .choice-dot { background: var(--color-accent-default); border-color: var(--color-accent-default); }

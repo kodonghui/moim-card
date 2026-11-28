@@ -1,5 +1,5 @@
 /** Common HTTP behavior for API-001 through API-016 (G-1–G-10). */
-export type Problem = { status: number; code: string; traceId?: string; errors?: Array<{ field: string; reason: string }> };
+export type Problem = { status: number; code: string; traceId?: string; errors?: Array<{ field: string; reason: string; positions?: number[] }> };
 export class ApiError extends Error {
   constructor(readonly problem: Problem, readonly retryAfter: number = 0) { super(problem.code); }
 }
