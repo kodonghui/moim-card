@@ -3,6 +3,7 @@ import { createApi } from './app';
 import { createSession, type SessionEnv } from './create-session';
 import { listThemes } from './themes';
 import { listMyRooms } from './my-rooms';
+import { listPastCards } from './past-cards';
 import { requireSession } from './session';
 import { submitResponse, getMyProfile, getCard, closeRoom } from './responses';
 import { createRoom, getRoom, joinRoom, getQuestions } from './rooms';
@@ -22,6 +23,7 @@ export default {
       {method:'GET', path:'/v1/rooms/:roomCode/card', handler: req => getCard(req, env.DB)},
       {method:'POST', path:'/v1/rooms/:roomCode/close', handler: req => closeRoom(req, env.DB)},
       {method:'GET', path:'/v1/me/rooms', middleware:requireSession(env.DB), handler: (_, userId) => listMyRooms(env.DB, userId!)},
+      {method:'GET', path:'/v1/me/past-cards', middleware:requireSession(env.DB), handler: (req, userId) => listPastCards(req, env.DB, userId!)},
     ]).fetch(request);
   },
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
