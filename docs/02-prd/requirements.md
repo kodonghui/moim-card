@@ -160,7 +160,7 @@
 | --- | --- | --- | --- | --- |
 | F-1 | 토스 파트너 API(mTLS)의 인증 코드 교환을 사업자등록 없이 쓸 수 있나, Cloudflare Workers에서 mTLS 클라이언트 인증서를 쓸 수 있나 (01 추측 6, H-11) | REQ-041, REQ-058 | 05 ERD·06 API 전 | 아래 "F-1 확인 결과" |
 | F-2 | 대표 전환 지표를 어떤 SDK·API로 기록하나 (01 H-12) | REQ-071 | 06 API 전 | 아래 "F-2 확인 결과" |
-| F-3 | 문항 세트를 서버에서 내려 주면 번들 재검수 없이 테마를 더할 수 있나 (01 H-09) | REQ-038 | 06 API 전 | 토스 노트의 추정뿐이에요(직접 답변 없음). 콘솔 문의는 외부 메시지라 사용자님 확인 사항이에요. |
+| F-3 | 문항 세트를 서버에서 내려 주면 번들 재검수 없이 테마를 더할 수 있나 (01 H-09) | REQ-038 | 06 API 전 | 토스 노트의 추정뿐이에요(직접 답변 없음). 콘솔 문의는 외부 메시지라 사용자님 확인 사항이에요. 2026-11-28 공식 문서 본문에도 답이 없었어요([04 spec.md 5절](../04-functional-spec/spec.md#5-확인할-사실)). |
 
 2026-11-28 공식 문서 확인 결과예요(페이지에 수정일 표시 없음, Cloudflare 페이지만 2026-04-23).
 
@@ -172,7 +172,7 @@
 - [공식] Cloudflare Workers는 `mtls_certificates` 바인딩으로 나가는 요청에 클라이언트 인증서를 붙일 수 있어요. 요금제 제한 문장은 없어요. 제한은 Cloudflare 프록시 zone으로 가는 요청에는 쓸 수 없다는 것(520 응답)과, 인증서를 올리려면 SSL and Certificates Edit 권한의 API 토큰이 필요하다는 것이에요. ([Cloudflare mTLS 바인딩](https://developers.cloudflare.com/workers/runtime-apis/bindings/mtls/))
 - 결론: REQ-041은 그대로 둬요. 발급이 막히면 질문으로 올려요(대안: 첫 버전은 식별키를 믿되 방 코드·사용자 ID 짝을 서버가 확인하는 약한 방식).
 
-**F-2 확인 결과 (상태: 일부 확인).**
+**F-2 확인 결과 (상태: 일부 확인 → 2026-11-28 06 API 전에 확인. SDK `Analytics.log`로 남기고 콘솔에서 전환 지표로 묶어요. 결과와 출처는 [04 spec.md 5절](../04-functional-spec/spec.md#5-확인할-사실), DEC-020).**
 
 - [공식] 전환 지표는 콘솔 → 핵심 지표에서 이벤트를 OR 조건으로 묶고 파라미터를 정해 만들어요. 최대 3개, 그중 1개가 대표 전환이에요. ([핵심 지표](https://developers-apps-in-toss.toss.im/guide/analytics/conversion-metrics))
 - 확인하지 못한 것: 이벤트를 남기는 SDK 호출 이름과, "두 번째 응답 제출" 같은 직접 만든 이벤트를 전환 지표로 쓸 수 있는지예요. 페이지는 활성 지표에만 커스텀 이벤트를 명시해요. [로깅 가이드](https://developers-apps-in-toss.toss.im/guide/analytics/logging)를 06 API 전에 읽어요.
