@@ -8,7 +8,7 @@ type RequestOptions = { method?: 'GET' | 'POST' | 'DELETE'; body?: unknown; idem
 export class ApiClient {
   private token: string | undefined;
   private readonly fetcher: typeof fetch;
-  constructor(private readonly options: Options) { this.fetcher = options.fetcher ?? fetch; }
+  constructor(private readonly options: Options) { this.fetcher = options.fetcher ?? globalThis.fetch.bind(globalThis); }
   setToken(token: string): void { this.token = token; }
   clearToken(): void { this.token = undefined; }
 
