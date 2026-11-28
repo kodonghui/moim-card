@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
+import { mockDestinations } from './destinations';
+test.beforeEach(async ({ page }) => { await mockDestinations(page); });
 
 test.use({ viewport: { width: 360, height: 800 } });
 type Selection = { code: number; example?: string; delay?: number };
