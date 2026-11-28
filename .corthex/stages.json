@@ -244,6 +244,36 @@
       ],
       "next": "10 WBS(TASK ID). 11·12에서 개발 단계 확인 항목 3개(토스 WebView·TDS 렌더, 스크린 리더, 키보드 순서)를 확인",
       "updated": "2026-11-28T18:45:00+09:00"
+    },
+    "10-wbs": {
+      "state": "done",
+      "checks": [
+        {
+          "level": "info",
+          "message": "TASK 54개(Codex 53, 사용자님 1), S 16·M 34·L 4. check-wbs 통과 400·실패 0: SPEC 39/39, REQ 84/84, API 16/16, SCR 15/15, 순환 없음",
+          "at": "2026-11-28"
+        },
+        {
+          "level": "info",
+          "message": "사용자님 일 U-1~U-10(제품명·appName, 콘솔 앱 등록·인증서, 알림 템플릿 검수, 사업자등록(첫 버전 불필요), 약관 운영자 표기, QR 실기기, 운영 배포, 검수 제출, 출시, F-3 콘솔 문의)",
+          "at": "2026-11-28"
+        },
+        {
+          "level": "info",
+          "message": "개발 단계 확인 3개는 TASK-052(브라우저)·TASK-053(실기기), F-1은 U-2·TASK-050, F-3은 TASK-014·U-10",
+          "at": "2026-11-28"
+        }
+      ],
+      "next": "11 개발 페이즈 0: TASK-001부터(Codex 작업자). 월요일(2026-11-30) 이후 사용자님께 U-1 제품명 후보 2~3개+추천 하나와 U-2 콘솔 앱 등록(본인인증 단계만)을 여쭘",
+      "updated": "2026-11-28T21:30:00+09:00",
+      "checkpoints": [
+        {
+          "approved": "10 WBS 체크포인트 통과(다음 개발 계획 합의). TASK-001~054(PR #11 커밋 b5302a8)를 그대로 승인, 페이즈 0부터 Codex 작업자(gpt-6.1-terra xhigh). B-1~B-10 함께 승인(DEC-036·037). 질문 2: 제품명·콘솔 앱 등록은 월요일(2026-11-30) 이후 페이즈 0 진행과 함께 사용자님께, 본인인증이 걸리는 단계만 사용자님, 제품명은 후보 2~3개+추천 하나(DEC-038)",
+          "by": "the orchestrator agent on the owner's behalf (weekend delegation)",
+          "where": "docs/records/decisions.md (DEC-037, DEC-038)",
+          "date": "2026-11-28"
+        }
+      ]
     }
   }
 }
