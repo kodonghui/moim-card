@@ -379,8 +379,6 @@ paths:
                     status: 429
                     code: rate_limited
                     traceId: 7e360da120b6e534
-                write-limit:
-                  $ref: '#/components/examples/write-limit'
           headers:
             Retry-After:
               description: 다시 보내도 되는 때까지 남은 초

@@ -25,6 +25,25 @@ describe('TASK-017 API-003 create room', () => {
   expect((await env.DB.prepare("SELECT SUM(count) AS n FROM rate_counters WHERE scope='room_create'").first<{n:number}>())?.n).toBe(1);
   expect((await env.DB.prepare("SELECT count(*) AS n FROM rate_counters WHERE scope='write'").first<{n:number}>())?.n).toBe(0);
  });
+ it('pins the latest published version rather than a withdrawn newer version', async () => {
+  await env.DB.prepare("INSERT INTO question_sets (theme_id,version,status,default_next_action,content_sha256,published_at,withdrawn_at) VALUES ('trip',2,'published','정해요',?,?,NULL),('trip',3,'withdrawn','정해요',?,?,?)").bind('d'.repeat(64),now,'e'.repeat(64),now,now).run();
+  const r=await worker.fetch(req(),bindings);expect(r.status).toBe(201);
+  expect((await env.DB.prepare('SELECT q.version FROM rooms r JOIN question_sets q ON q.id=r.question_set_id').first<{version:number}>())?.version).toBe(2);
+ });
+ it('replans when the selected latest version is withdrawn before commit', async () => {
+  await env.DB.prepare("INSERT INTO question_sets (theme_id,version,status,default_next_action,content_sha256,published_at) VALUES ('trip',2,'published','정해요',?,?)").bind('d'.repeat(64),now).run();
+  let signal!:()=>void,release!:()=>void,blocked=false;
+  const started=new Promise<void>(r=>{signal=r}),gate=new Promise<void>(r=>{release=r});
+  const delayed=new Proxy(env.DB,{get(target,prop){
+    if(prop==='batch')return async (...args:Parameters<D1Database['batch']>)=>{if(!blocked){blocked=true;signal();await gate}return target.batch(...args)};
+    const value=Reflect.get(target,prop,target);return typeof value==='function'?value.bind(target):value;
+  }});
+  const pending=worker.fetch(req(),{...bindings,DB:delayed});await started;
+  await env.DB.prepare("UPDATE question_sets SET status='withdrawn',withdrawn_at=? WHERE theme_id='trip' AND version=2").bind(now).run();
+  release();const r=await pending;expect(r.status).toBe(201);
+  expect((await env.DB.prepare('SELECT q.version FROM rooms r JOIN question_sets q ON q.id=r.question_set_id').first<{version:number}>())?.version).toBe(1);
+  expect((await env.DB.prepare("SELECT SUM(count) AS n FROM rate_counters WHERE scope='room_create'").first<{n:number}>())?.n).toBe(1);
+ });
  it('creates a room even when the separate write limit is exhausted', async () => {
   await env.DB.prepare("INSERT INTO rate_counters VALUES ('write',?,?,60)").bind(user,Math.floor(now/60)*60).run();
   expect((await worker.fetch(req(),bindings)).status).toBe(201);
@@ -53,7 +72,14 @@ describe('TASK-017 API-003 create room', () => {
  });
  it('allows only one concurrent request into the last room slot', async () => {
   await env.DB.prepare("INSERT INTO rate_counters VALUES ('room_create',?,?,29)").bind(user,now).run();
-  const responses=await Promise.all([worker.fetch(req(body,key),bindings),worker.fetch(req(body,key2),bindings)]);
+  let ready!:()=>void,release!:()=>void,waiting=0;
+  const both=new Promise<void>(r=>{ready=r}),gate=new Promise<void>(r=>{release=r});
+  const delayed=new Proxy(env.DB,{get(target,prop){
+    if(prop==='batch')return async (...args:Parameters<D1Database['batch']>)=>{if(++waiting<=2){if(waiting===2)ready();await gate}return target.batch(...args)};
+    const value=Reflect.get(target,prop,target);return typeof value==='function'?value.bind(target):value;
+  }});
+  const pending=Promise.all([worker.fetch(req(body,key),{...bindings,DB:delayed}),worker.fetch(req(body,key2),{...bindings,DB:delayed})]);
+  await both;release();const responses=await pending;
   expect(responses.map(r=>r.status).sort()).toEqual([201,429]); expect(await count('rooms')).toBe(1);
   expect((await env.DB.prepare("SELECT SUM(count) AS n FROM rate_counters WHERE scope='room_create'").first<{n:number}>())?.n).toBe(30);
  });
