@@ -2,7 +2,7 @@
 export default {
   async fetch(request) {
     const path = new URL(request.url).pathname;
-    if (path.endsWith('/users/anon-key/exchange')) { const {code}=await request.json(); return Response.json({resultType:'SUCCESS',success:{anonKey:`contract-test-${code}`}}); }
+    if (path.endsWith('/users/anon-key/exchange')) { const {code}=await request.json(); if(code==='contract-unavailable')return new Response(null,{status:500}); return Response.json({resultType:'SUCCESS',success:{anonKey:`contract-test-${code}`}}); }
     if (path.endsWith('/messenger/send-message')) return Response.json({resultType:'SUCCESS',success:{}});
     return new Response(null,{status:404});
   },

@@ -18,4 +18,5 @@ ORIGIN_PRIVATE = "https://private.test"
 USER_HMAC_KEY = "contract-test-fake-hmac-key-0000000000"
 NOTIFICATION_KEYS = '{"1":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc"}'
 NOTIFICATION_ACTIVE_KEY_VERSION = "1"
+NOTIFICATION_LIMIT_HMAC_KEY = "contract-test-independent-limit-hmac-key"
 NOTIFICATION_TEMPLATE_SET_CODE = "contract-test-template"
