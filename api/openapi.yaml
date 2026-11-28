@@ -2301,7 +2301,7 @@ paths:
       operationId: deleteMyData
       summary: 내 데이터 지우기
       description: '한 D1 batch에서: 내가 방장인 열린 방은 마감하고 방장 응답을 뺀 응답으로 최종 카드를 확정해요(2명 미만이면 카드 없이 마감, close_reason host_deleted). 참여자로 있는 열린 방은 내 응답을 빼고 계수를 줄이고 중간 카드를 다시 계산하거나 없애요. 그다음 세션에 revoked_at을 적고, 응답·참여자(닉네임)·알림
-        신청·지난 카드·요청 ID 기록·한도 계수·사용자를 지워요. 확정된 최종 카드는 그대로예요. 실패하면 batch 전체가 되돌려져요. 지운 뒤 같은 세션 토큰으로 다시 부르면 204예요(TBL-002).'
+        신청·지난 카드·요청 ID 기록·사용자 ID 기준 한도 계수·사용자를 지워요. 별도 식별키 HMAC 한도 계수는 DEC-051에 따라 논리적으로 1분 유효하고 매분 정리해요. 확정된 최종 카드는 그대로예요. 실패하면 batch 전체가 되돌려져요. 지운 뒤 같은 세션 토큰으로 다시 부르면 204예요(TBL-002).'
       x-corthex:
         id: API-015
         spec:
@@ -3523,7 +3523,14 @@ components:
         - TBL-011
         - TBL-012
         - TBL-014
-        what: API-007 커밋 뒤 ctx.waitUntil로 send-message를 불러요(x-anon-key, templateSetCode, context). 식별키당 분당 10건, 실패는 기록만
+        what: API-007 커밋 뒤 ctx.waitUntil로 send-message를 불러요(x-anon-key, templateSetCode, context). 식별키당 분당 10건, 실패는 기록만. 다른 응답의 알림은 마감 커밋 뒤 새로 시작하지 않고 이미 신청 확인·복호화를 마친 발송은 끝까지 보내요(DEC-050). 마지막 응답 알림은 DEC-024대로 보내요
+      cleanup-notification-limits:
+        spec:
+        - SPEC-025
+        - SPEC-029
+        tables:
+        - TBL-014
+        what: 매분 Cron. 지난 1분 구간의 식별키 HMAC 발송 한도 계수를 삭제해요(DEC-051)
       cleanup:
         spec:
         - SPEC-002
@@ -3532,7 +3539,7 @@ components:
         - TBL-002
         - TBL-013
         - TBL-014
-        what: 매시간 Cron. 끝난 세션, 24시간 지난 요청 ID 기록, 7일 지난 한도 계수를 지워요
+        what: 매시간 Cron. 끝난 세션, 24시간 지난 요청 ID 기록, 7일 지난 그 밖의 한도 계수를 지워요
     outside-the-server:
       SPEC-009: 화면만(토스 내비게이션 바)
       SPEC-020: 화면만(File.saveBase64)

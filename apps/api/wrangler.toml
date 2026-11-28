@@ -5,4 +5,4 @@ compatibility_date = "2025-04-01"
 # Test and production bindings are supplied by their own environments; never
 # place a real account or database identifier in this repository.
 [triggers]
-crons = ["0 * * * *"]
+crons = ["* * * * *", "0 * * * *"]

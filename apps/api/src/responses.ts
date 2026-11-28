@@ -3,6 +3,7 @@ import {problemResponse} from './app';
 import {idempotent} from './idempotency';
 import {findSessionUser} from './session';
 import {writeLimitReservation, writeLimitDenied} from './rate-limit';
+import {sendNotifications,type NotificationEnv,type SendSnapshot} from './notifications';
 
 type Room = {id:number;status:string;role:string|null;closeReason:'all_submitted'|'host_closed'|'host_deleted'|null;participantId:number|null;responseId:number|null;submittedCount:number;partySize:number;conversionLogged:number;setId:number;defaultAction:string};
 type Question = CardQuestion & {axis:Axis|null;axisPoleA:'low'|'high'|null};
@@ -57,7 +58,7 @@ function isCardWriteFailure(error:unknown):boolean {
  const message=error instanceof Error ? error.message : '';
  return /(?:interim_card_write_failed|(?:UNIQUE|NOT NULL) constraint failed: consensus_cards\.)/.test(message);
 }
-export async function submitResponse(request:Request,db:D1Database,now=Math.floor(Date.now()/1000)):Promise<Response> {
+export async function submitResponse(request:Request,db:D1Database,now=Math.floor(Date.now()/1000),notifications?:{env:NotificationEnv;waitUntil:(promise:Promise<unknown>)=>void}):Promise<Response> {
  const user=await findSessionUser(db,request.headers.get('Authorization')??undefined,now);if(!user)return problemResponse('unauthenticated');
  const path=new URL(request.url).pathname, code=path.split('/')[3]??'', text=await request.text(), key=request.headers.get('Idempotency-Key');
  const fingerprint=JSON.stringify([request.method,path,text]);
@@ -88,6 +89,12 @@ export async function submitResponse(request:Request,db:D1Database,now=Math.floo
       db.prepare('INSERT INTO responses(participant_id,room_id,answers,submitted_at) VALUES(?,?,?,?)').bind(room.participantId,room.id,parsed.answers.join(''),now),
       reserve(),
     ];
+    let notificationIndex=-1;
+    if(notifications){
+      statements.push(db.prepare("INSERT INTO notification_sends(room_id,subscription_id,trigger_participant_id,result,created_at) SELECT room_id,id,?,'pending',? FROM notification_subscriptions WHERE room_id=? AND participant_id<>? ON CONFLICT(subscription_id,trigger_participant_id) DO NOTHING").bind(room.participantId,now,room.id,room.participantId));
+      notificationIndex=statements.length;
+      statements.push(db.prepare("SELECT n.id AS sendId,n.room_id AS roomId,s.id AS subscriptionId,s.participant_id AS participantId,p.user_id AS userId,s.anon_key_ciphertext AS ciphertext,s.nonce,s.key_version AS keyVersion FROM notification_sends n JOIN notification_subscriptions s ON s.id=n.subscription_id JOIN participants p ON p.id=s.participant_id WHERE n.room_id=? AND n.trigger_participant_id=? AND n.result='pending'").bind(room.id,room.participantId));
+    }
     if(card) {
       statements.push(db.prepare("INSERT INTO consensus_cards(room_id,stage,based_on_count,items,next_action,computed_at,finalized_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(room_id) DO UPDATE SET stage=excluded.stage,based_on_count=excluded.based_on_count,items=excluded.items,next_action=excluded.next_action,computed_at=excluded.computed_at,finalized_at=excluded.finalized_at WHERE consensus_cards.stage='interim'").bind(room.id,final?'final':'interim',count,serializedItems(card.items),card.nextAction,now,final?now:null));
     }
@@ -96,7 +103,7 @@ export async function submitResponse(request:Request,db:D1Database,now=Math.floo
       statements.push(db.prepare("INSERT INTO past_cards(user_id,room_ref,gathering_name,theme_name,based_on_count,summary,next_action,finalized_at) SELECT p.user_id,r.id,r.gathering_name,t.name,?,?,?,? FROM rooms r JOIN question_sets q ON q.id=r.question_set_id JOIN themes t ON t.id=q.theme_id JOIN participants p ON p.room_id=r.id JOIN responses x ON x.participant_id=p.id WHERE r.id=?").bind(count,JSON.stringify(card.items),card.nextAction,now,room.id));
       statements.push(db.prepare('DELETE FROM notification_subscriptions WHERE room_id=?').bind(room.id));
     }
-    return {status:201,body:{roomStatus:final?'closed':'open',submittedCount:count,partySize:room.partySize,cardStage:final?'final':count>=2?'interim':'none',logConversion:conversion,profile:resultProfile},statements};
+    return {status:201,body:{roomStatus:final?'closed':'open',submittedCount:count,partySize:room.partySize,cardStage:final?'final':count>=2?'interim':'none',logConversion:conversion,profile:resultProfile},statements,onCommitted: notifications ? (results:D1Result[]) => {const snapshots=results[notificationIndex+2].results as SendSnapshot[];if(snapshots.length)notifications.waitUntil(sendNotifications(notifications.env,snapshots,final).catch(()=>console.error(JSON.stringify({event:'notification_job_failed'}))))} : undefined};
 
    });
   } catch(error) {

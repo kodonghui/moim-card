@@ -10,7 +10,7 @@ export async function notificationKeyForVersion(env:NotificationKeys,version:num
   if(!Number.isSafeInteger(n)||n<1||String(n)!==name||typeof encoded!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(encoded))throw new Error('Notification keyring unavailable');
   let bytes:Uint8Array;try{bytes=Uint8Array.from(atob(encoded.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0))}catch{throw new Error('Notification keyring unavailable')}
   if(bytes.length!==32)throw new Error('Notification keyring unavailable');
-  if(n===version)selected=bytes;
+  if(n===version)selected=bytes;else bytes.fill(0);
  }
  if(!selected)throw new Error('Notification key unavailable');
  try{return await crypto.subtle.importKey('raw',selected,'AES-GCM',false,[usage])}finally{selected.fill(0)}
