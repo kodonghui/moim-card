@@ -2,7 +2,7 @@ import {env} from 'cloudflare:test';
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {hashToken} from '../src/session';
 import {identityHash} from '../src/identity';
-import {activeNotificationKey,notificationAAD} from '../src/notification-crypto';
+import {activeNotificationKey,notificationKeyForVersion,notificationAAD} from '../src/notification-crypto';
 import worker from '../src/worker';
 const origin='https://example.test',token='a'.repeat(43),user='a'.repeat(26),now=Math.floor(Date.now()/1000),key='12345678-1234-1234-1234-123456789abc', key2='22345678-1234-1234-1234-123456789abc',secret='x'.repeat(32),anon='anonymous-test-identity';
 const encoded=btoa(String.fromCharCode(...new Uint8Array(32).fill(7))).replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');
@@ -29,8 +29,12 @@ describe('TASK-031 API-011 notification subscription',()=>{
   const row=await env.DB.prepare('SELECT participant_id,room_id,anon_key_ciphertext,nonce,key_version FROM notification_subscriptions').first<{participant_id:number;room_id:number;anon_key_ciphertext:ArrayBuffer;nonce:ArrayBuffer;key_version:number}>();
   expect(row?.key_version).toBe(1);expect(new Uint8Array(row!.nonce)).toHaveLength(12);
   expect(new TextDecoder().decode(new Uint8Array(row!.anon_key_ciphertext))).not.toContain(anon);
-  const aes=await activeNotificationKey(e);const plaintext=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row!.nonce),additionalData:notificationAAD(row!.room_id,row!.participant_id,row!.key_version)},aes.key,new Uint8Array(row!.anon_key_ciphertext));
-  expect(new TextDecoder().decode(plaintext)).toBe(anon);expect(JSON.stringify(log.mock.calls)).not.toContain(anon);log.mockRestore();
+  const aes=await activeNotificationKey(e);expect(aes.key.usages).toEqual(['encrypt']);const decryptKey=await notificationKeyForVersion(e,1,'decrypt');const plaintext=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row!.nonce),additionalData:notificationAAD(row!.room_id,row!.participant_id,row!.key_version)},decryptKey,new Uint8Array(row!.anon_key_ciphertext));
+  expect(new TextDecoder().decode(plaintext)).toBe(anon);
+  for(const [room,participant,version] of [[row!.room_id+1,row!.participant_id,1],[row!.room_id,row!.participant_id+1,1],[row!.room_id,row!.participant_id,2]])await expect(crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row!.nonce),additionalData:notificationAAD(room,participant,version)},decryptKey,new Uint8Array(row!.anon_key_ciphertext))).rejects.toThrow();
+  const rotated={...e,NOTIFICATION_KEYS:JSON.stringify({'1':encoded,'2':btoa(String.fromCharCode(...new Uint8Array(32).fill(8))).replace(/=+$/,'')}),NOTIFICATION_ACTIVE_KEY_VERSION:'2'};expect((await activeNotificationKey(rotated)).version).toBe(2);expect(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(row!.nonce),additionalData:notificationAAD(row!.room_id,row!.participant_id,1)},await notificationKeyForVersion(rotated,1,'decrypt'),new Uint8Array(row!.anon_key_ciphertext)))).toBe(anon);
+  await expect(notificationKeyForVersion({...rotated,NOTIFICATION_KEYS:JSON.stringify({'1':encoded,'2':'bad'})},1,'decrypt')).rejects.toThrow();
+  expect((await env.DB.prepare("SELECT count FROM rate_counters WHERE scope='write' AND subject=?").bind(user).first<{count:number}>())?.count).toBe(1);expect(JSON.stringify(log.mock.calls)).not.toContain(anon);log.mockRestore();
  });
  it('uses independent nonces for distinct subscriptions',async()=>{
   expect((await worker.fetch(req(),bindings())).status).toBe(201);
