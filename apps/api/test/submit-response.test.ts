@@ -1,5 +1,5 @@
 import {env} from 'cloudflare:test';
-import {beforeEach,describe,expect,it} from 'vitest';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {hashToken} from '../src/session';
 import {readFreshInterimCard} from '../src/responses';
 import worker from '../src/worker';
@@ -20,6 +20,8 @@ beforeEach(async()=>{
  await env.DB.prepare("INSERT INTO rooms(code,gathering_name,party_size,question_set_id,participant_count,created_at,expires_at) VALUES('ABCDEFGH23','여행',4,1,3,?,?)").bind(now,now+2592000).run();
  for(const [id,role] of [[userA,'host'],[userB,'member'],[userC,'member']]) await env.DB.prepare('INSERT INTO participants(room_id,user_id,role,nickname,joined_at) VALUES(1,?,?,?,?)').bind(id,role,'이름',now).run();
 });
+beforeEach(()=>{vi.spyOn(Date,'now').mockReturnValue(now*1000)});
+afterEach(()=>vi.restoreAllMocks());
 describe('TASK-021 API-007 submit response',()=>{
  it('creates a first response and second interim card exactly once',async()=>{
   let r=await worker.fetch(req(),bindings);expect(r.status).toBe(201);expect(await r.json()).toMatchObject({submittedCount:1,cardStage:'none',logConversion:false});

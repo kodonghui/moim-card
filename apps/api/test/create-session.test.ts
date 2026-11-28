@@ -1,5 +1,5 @@
 import { env } from 'cloudflare:test';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import worker from '../src/worker';
 
 const origin = 'https://example.test';
@@ -9,6 +9,8 @@ const success = () => Response.json({resultType:'SUCCESS',success:{anonKey:'anon
 const request = (body: string, headers: Record<string,string> = {}) => new Request('https://api.test/v1/sessions', {method:'POST', headers:{origin, 'content-type':'application/json', ...headers},body});
 const count = async (table: string) => (await env.DB.prepare(`SELECT count(*) AS n FROM ${table}`).first<{n:number}>())!.n;
 
+beforeEach(()=>{vi.spyOn(Date,'now').mockReturnValue(now*1000)});
+afterEach(()=>vi.restoreAllMocks());
 describe('TASK-013 API-001 sessions', () => {
   it('issues a token, stores only hashes and converges concurrent first requests', async () => {
     const e = binding(success);
