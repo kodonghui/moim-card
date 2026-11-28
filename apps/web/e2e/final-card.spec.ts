@@ -3,6 +3,7 @@ const cors = { 'Access-Control-Allow-Origin': '*' };
 const room = { gatheringName: '제주 3박', theme: { name: '여행' }, status: 'closed', mySubmitted: false };
 const card = { stage: 'final', basedOnCount: 2, partySize: 4, asOf: '2026-11-28T09:30:00Z', finalizedAt: '2026-11-28T09:30:00Z', nextAction: '함께 정해요', items: Array.from({ length: 8 }, (_, i) => ({ position: i + 1, prompt: `질문 ${i + 1}`, optionA: 'A', optionB: 'B', category: 'open', countA: 0, countB: 0, countNone: 2, text: '누구나 괜찮아요' })) };
 test('비참여자는 최종 카드를 읽고 우리도 해 보기로 이동한다', async ({ page }) => {
+  await page.route('**/v1/themes', route => route.fulfill({ headers: cors, json: { themes: [] } }));
   await page.setViewportSize({ width: 360, height: 800 });
   await page.route('**/v1/rooms/**', route => route.fulfill({ headers: cors, json: route.request().url().endsWith('/card') ? card : room }));
   await page.goto('/room/final?room=ABCDEFGH23');

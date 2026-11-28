@@ -18,6 +18,7 @@ async function prism(page: Page, endpoint: string, choices: Selection[]) {
 }
 async function enter(page: Page) { await page.goto('/room/final?room=ABCDEFGH23'); }
 test('초대받은 사람에게 최종 카드와 우리도 해 보기만 보여준다', async ({ page }) => {
+  await page.route('**/v1/themes', route => route.fulfill({ headers: cors, json: { themes: [] } }));
   await prism(page, '', [{ code: 200, example: 'closed' }]); await prism(page, '/card', [{ code: 200, example: 'final' }]); await enter(page);
   await expect(page.getByRole('article', { name: '합의 카드' })).toBeVisible(); await expect(page.getByRole('button', { name: '우리도 해 보기' })).toBeVisible();
   for (const name of ['참여하기', '제출하기', '카드 저장', '단톡방에 보내기']) await expect(page.getByRole('button', { name })).toHaveCount(0);
