@@ -33,6 +33,14 @@ describe('TASK-007 rate limits', () => {
     expect((await withTossLimit(env.DB,user,now,async () => 1, e => logs.push(e))).ok).toBe(true);
     expect(logs).toEqual([{minute,calls:1}]);
   });
+  it('writes aggregate Toss counts to the default logger', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await withTossLimit(env.DB,user,now,async () => 1);
+      expect(JSON.parse(String(log.mock.calls[0][0]))).toEqual({event:'toss_api_minute',minute,calls:1});
+      expect(JSON.stringify(log.mock.calls)).not.toContain(user);
+    } finally { log.mockRestore(); }
+  });
   it('increments both room and write counters and resets on a new window', async () => {
     expect(await checkLimit(env.DB, 'room_create', user, now)).toBeNull();
     const rows = await snapshot();

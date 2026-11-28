@@ -5,7 +5,7 @@ type Scope = 'write' | 'room_create' | 'toss_api_user' | 'toss_api_app';
 type Limit = {scope: Scope; subject: string; start: number; seconds: number; maximum: number};
 
 /** Fixed UTC windows; all counters for an action increment together or not at all. */
-export async function checkLimit(db: D1Database, kind: Kind, userId: string, now: number, log: (entry: {minute: number; calls: number}) => void = () => {}): Promise<Response | null> {
+export async function checkLimit(db: D1Database, kind: Kind, userId: string, now: number, log: (entry: {minute: number; calls: number}) => void = entry => console.log(JSON.stringify({event: 'toss_api_minute', ...entry}))): Promise<Response | null> {
   if (kind === 'read') return null;
   const minute = Math.floor(now / 60) * 60, day = Math.floor(now / 86400) * 86400;
   const limits: Limit[] = kind === 'toss'
