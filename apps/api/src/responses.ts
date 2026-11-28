@@ -1,4 +1,4 @@
-import {calculateCard, calculateProfile, type Answer, type Axis, type CardQuestion, type ProfilePhrases} from '@moim-card/packages-shared';
+import {calculateCard, cardItemText, calculateProfile, type Answer, type Axis, type CardQuestion, type ProfilePhrases} from '@moim-card/packages-shared';
 import {problemResponse} from './app';
 import {idempotent} from './idempotency';
 import {findSessionUser} from './session';
@@ -114,7 +114,7 @@ export async function submitResponse(request:Request,db:D1Database,now=Math.floo
 /** Recompute a missing or stale interim card on read, with a count guard against concurrent submissions. */
 export async function readFreshInterimCard(db:D1Database,roomId:number,now:number):Promise<{basedOnCount:number;items:string;nextAction:string}|null> {
  for(let attempt=0;attempt<10;attempt++) {
-  const room=await db.prepare("SELECT r.submitted_count AS n,r.status,r.question_set_id AS setId,q.default_next_action AS defaultAction FROM rooms r JOIN question_sets q ON q.id=r.question_set_id WHERE r.id=?").bind(roomId).first<{n:number;status:string;setId:number;defaultAction:string}>();
+  const room=await db.prepare("SELECT r.submitted_count AS n,r.status,r.question_set_id AS setId,r.conversion_logged AS conversionLogged,q.default_next_action AS defaultAction FROM rooms r JOIN question_sets q ON q.id=r.question_set_id WHERE r.id=?").bind(roomId).first<{n:number;status:string;setId:number;conversionLogged:number;defaultAction:string}>();
   if(!room || room.status!=='open' || room.n<2)return null;
   const existing=await db.prepare("SELECT based_on_count AS basedOnCount,items,next_action AS nextAction FROM consensus_cards WHERE room_id=? AND stage='interim'").bind(roomId).first<{basedOnCount:number;items:string;nextAction:string}>();
   if(existing?.basedOnCount===room.n)return existing;
@@ -122,7 +122,10 @@ export async function readFreshInterimCard(db:D1Database,roomId:number,now:numbe
   if(answers.length!==room.n)continue;
   const card=calculateCard(questions,answers,room.defaultAction),items=serializedItems(card.items);
   const result=await db.prepare("INSERT INTO consensus_cards(room_id,stage,based_on_count,items,next_action,computed_at,finalized_at) SELECT ?,'interim',?,?,?,?,NULL WHERE EXISTS(SELECT 1 FROM rooms WHERE id=? AND status='open' AND submitted_count=?) ON CONFLICT(room_id) DO UPDATE SET based_on_count=excluded.based_on_count,items=excluded.items,next_action=excluded.next_action,computed_at=excluded.computed_at WHERE consensus_cards.stage='interim'").bind(roomId,room.n,items,card.nextAction,now,roomId,room.n).run();
-  if(result.meta.changes===1)return {basedOnCount:room.n,items,nextAction:card.nextAction};
+  if(result.meta.changes===1){
+   if(room.conversionLogged===0)console.log(JSON.stringify({event:'conversion_may_be_missing',count:1}));
+   return {basedOnCount:room.n,items,nextAction:card.nextAction};
+  }
  }
  throw new Error('Concurrent card repair did not settle');
 }
@@ -138,4 +141,38 @@ export async function getMyProfile(request:Request,db:D1Database,now=Math.floor(
  if(!stored) return problemResponse('response_required');
  const questions=await readQuestions(db,room.setId);
  return Response.json(await profile(db,room.setId,questions,[...stored.answers] as Answer[]));
+}
+
+type StoredCard = {stage:'interim'|'final';basedOnCount:number;items:string;nextAction:string;finalizedAt:number|null};
+/** Render only the stored counts; a finalized card never depends on present-day responses. */
+export async function renderStoredCard(db:D1Database,room:Room,card:StoredCard|null,now:number) {
+ const common={partySize:room.partySize,asOf:new Date(now*1000).toISOString()};
+ if(!card)return {stage:'none',basedOnCount:room.submittedCount,items:[],nextAction:null,finalizedAt:null,...common};
+ const questions=await readQuestions(db,room.setId);
+ const stored=JSON.parse(card.items) as {position:number;a:number;b:number;none:number;category:'agreed'|'split'|'open'}[];
+ if(!Array.isArray(stored)||stored.length!==8)throw new Error('Stored card incomplete');
+ const items=stored.map((item,index)=>{
+  const q=questions[index];if(item.position!==q.position)throw new Error('Stored card position mismatch');
+  const text=cardItemText(q,item.category,item.a);
+  return {position:item.position,prompt:q.prompt,optionA:q.optionA,optionB:q.optionB,category:item.category,countA:item.a,countB:item.b,countNone:item.none,text};
+ });
+ return {stage:card.stage,basedOnCount:card.basedOnCount,items,nextAction:card.nextAction,finalizedAt:card.finalizedAt===null?null:new Date(card.finalizedAt*1000).toISOString(),...common};
+}
+export async function getCard(request:Request,db:D1Database,now=Math.floor(Date.now()/1000)):Promise<Response> {
+ const user=await findSessionUser(db,request.headers.get('Authorization')??undefined,now);if(!user)return problemResponse('unauthenticated');
+ const code=new URL(request.url).pathname.split('/')[3]??'';if(!CODE.test(code))return problemResponse('room_not_found');
+ for(let attempt=0;attempt<10;attempt++){
+  const room=await readRoom(db,user,code,now);if(!room)return problemResponse('room_not_found');
+  if(room.status==='open'){
+   if(!room.participantId)return problemResponse('not_participant');
+   if(!room.responseId)return problemResponse('response_required');
+   if(room.submittedCount>=2)await readFreshInterimCard(db,room.id,now);
+  }
+  const latest=await readRoom(db,user,code,now);if(!latest)return problemResponse('room_not_found');
+  if(latest.status!==room.status||latest.submittedCount!==room.submittedCount)continue;
+  const card=latest.status==='open' && latest.submittedCount<2 ? null : await db.prepare('SELECT stage,based_on_count AS basedOnCount,items,next_action AS nextAction,finalized_at AS finalizedAt FROM consensus_cards WHERE room_id=?').bind(room.id).first<StoredCard>();
+  if(latest.status==='open'&&latest.submittedCount>=2&&(!card||card.stage!=='interim'||card.basedOnCount!==latest.submittedCount))continue;
+  return Response.json(await renderStoredCard(db,latest,card,now));
+ }
+ throw new Error('Concurrent card reads did not settle');
 }
