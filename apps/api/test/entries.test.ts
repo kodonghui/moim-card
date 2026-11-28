@@ -1,11 +1,13 @@
 import {env} from 'cloudflare:test';
-import {beforeEach,describe,expect,it} from 'vitest';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {hashToken} from '../src/session';
 import worker from '../src/worker';
 const origin='https://example.test',token='a'.repeat(43),user='a'.repeat(26),now=Math.floor(Date.now()/1000);
 const bindings={DB:env.DB,USER_HMAC_KEY:'x'.repeat(32),ORIGIN_PUBLIC:origin,ORIGIN_PRIVATE:'https://private.test',TOSS:{fetch:async()=>new Response()}};
 const req=(body='{"referrerKind":"external_share"}',auth=true,o=origin)=>new Request('https://api.test/v1/entries',{method:'POST',headers:{origin:o,'content-type':'application/json',...(auth?{authorization:`Bearer ${token}`}:{})},body});
 beforeEach(async()=>{await env.DB.prepare('INSERT INTO users VALUES (?,?,?)').bind(user,'b'.repeat(64),now).run();await env.DB.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at) VALUES(?,?,?,?)').bind(await hashToken(token),user,now,now+43200).run()});
+beforeEach(()=>{vi.spyOn(Date,'now').mockReturnValue(now*1000)});
+afterEach(()=>vi.restoreAllMocks());
 describe('TASK-030 API-016 entry stats',()=>{
  it('returns 204 and stores only daily anonymous aggregate counts',async()=>{
   for(const body of ['{"referrerKind":"external_share"}','{"referrerKind":"external_share"}','{"referrerKind":"other"}'])expect((await worker.fetch(req(body),bindings)).status).toBe(204);
