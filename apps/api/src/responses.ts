@@ -55,7 +55,7 @@ async function profile(db:D1Database,setId:number,questions:Question[],answers:A
 /** Only errors identifying the card write qualify. The explicit marker is for fault injection; production failures often lack a statement identifier, so unknown failures stay errors. */
 function isCardWriteFailure(error:unknown):boolean {
  const message=error instanceof Error ? error.message : '';
- return /(?:interim_card_write_failed|(?:UNIQUE|FOREIGN KEY) constraint failed: consensus_cards\.)/.test(message);
+ return /(?:interim_card_write_failed|(?:UNIQUE|NOT NULL) constraint failed: consensus_cards\.)/.test(message);
 }
 export async function submitResponse(request:Request,db:D1Database,now=Math.floor(Date.now()/1000)):Promise<Response> {
  const user=await findSessionUser(db,request.headers.get('Authorization')??undefined,now);if(!user)return problemResponse('unauthenticated');
@@ -80,16 +80,23 @@ export async function submitResponse(request:Request,db:D1Database,now=Math.floo
     const [questions,previous]=await Promise.all([readQuestions(db,room.setId),readAnswers(db,room.id)]);
     if(previous.length!==room.submittedCount) throw new Error('stale_submission_snapshot');
     const resultProfile=await profile(db,room.setId,questions,parsed.answers);
-    const count=room.submittedCount+1, withCard=count>=2 && !fallback;
+    const count=room.submittedCount+1, final=count===room.partySize, withCard=count>=2 && !fallback;
     const card=withCard?calculateCard(questions,[...previous,parsed.answers],room.defaultAction):null;
-    const conversion=withCard && room.conversionLogged===0;
+    const conversion=withCard && !final && room.conversionLogged===0;
     const statements=[
-      db.prepare("UPDATE rooms SET submitted_count=CASE WHEN status='open' AND submitted_count=? AND expires_at>? THEN submitted_count+1 ELSE NULL END,conversion_logged=CASE WHEN ?=1 THEN 1 ELSE conversion_logged END WHERE id=?").bind(room.submittedCount,now,conversion?1:0,room.id),
+      db.prepare("UPDATE rooms SET submitted_count=CASE WHEN status='open' AND submitted_count=? AND expires_at>? THEN submitted_count+1 ELSE NULL END,conversion_logged=CASE WHEN ?=1 THEN 1 ELSE conversion_logged END,status=CASE WHEN ?=1 THEN 'closed' ELSE status END,close_reason=CASE WHEN ?=1 THEN 'all_submitted' ELSE close_reason END,closed_at=CASE WHEN ?=1 THEN ? ELSE closed_at END WHERE id=?").bind(room.submittedCount,now,conversion?1:0,final?1:0,final?1:0,final?1:0,now,room.id),
       db.prepare('INSERT INTO responses(participant_id,room_id,answers,submitted_at) VALUES(?,?,?,?)').bind(room.participantId,room.id,parsed.answers.join(''),now),
       reserve(),
     ];
-    if(card) statements.push(db.prepare("INSERT INTO consensus_cards(room_id,stage,based_on_count,items,next_action,computed_at,finalized_at) VALUES(?,'interim',?,?,?,?,NULL) ON CONFLICT(room_id) DO UPDATE SET stage='interim',based_on_count=excluded.based_on_count,items=excluded.items,next_action=excluded.next_action,computed_at=excluded.computed_at WHERE consensus_cards.stage='interim'").bind(room.id,count,serializedItems(card.items),card.nextAction,now));
-    return {status:201,body:{roomStatus:'open',submittedCount:count,partySize:room.partySize,cardStage:count>=2?'interim':'none',logConversion:conversion,profile:resultProfile},statements};
+    if(card) {
+      statements.push(db.prepare("INSERT INTO consensus_cards(room_id,stage,based_on_count,items,next_action,computed_at,finalized_at) VALUES(?,?,?,?,?,?,?) ON CONFLICT(room_id) DO UPDATE SET stage=excluded.stage,based_on_count=excluded.based_on_count,items=excluded.items,next_action=excluded.next_action,computed_at=excluded.computed_at,finalized_at=excluded.finalized_at WHERE consensus_cards.stage='interim'").bind(room.id,final?'final':'interim',count,serializedItems(card.items),card.nextAction,now,final?now:null));
+      if(final) {
+        statements.push(db.prepare("INSERT INTO past_cards(user_id,room_ref,gathering_name,theme_name,based_on_count,summary,next_action,finalized_at) SELECT p.user_id,r.id,r.gathering_name,t.name,?,?,?,? FROM rooms r JOIN question_sets q ON q.id=r.question_set_id JOIN themes t ON t.id=q.theme_id JOIN participants p ON p.room_id=r.id JOIN responses x ON x.participant_id=p.id WHERE r.id=?").bind(count,JSON.stringify(card.items),card.nextAction,now,room.id));
+        statements.push(db.prepare('DELETE FROM notification_subscriptions WHERE room_id=?').bind(room.id));
+      }
+    }
+    return {status:201,body:{roomStatus:final?'closed':'open',submittedCount:count,partySize:room.partySize,cardStage:final?'final':count>=2?'interim':'none',logConversion:conversion,profile:resultProfile},statements};
+
    });
   } catch(error) {
    if(error instanceof Error && error.message.includes('stale_submission_snapshot')) continue;
