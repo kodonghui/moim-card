@@ -10,7 +10,10 @@ beforeEach(async()=>{
  await env.DB.prepare('INSERT INTO sessions(token_hash,user_id,created_at,expires_at) VALUES(?,?,?,?)').bind(await hashToken(token),user,now,now+43200).run();
  await env.DB.prepare("INSERT INTO themes VALUES ('trip','여행',1)").run();
  await env.DB.prepare("INSERT INTO question_sets(theme_id,version,status,default_next_action,content_sha256,published_at) VALUES('trip',1,'published','정해요',?,?),('trip',2,'published','정해요',?,?)").bind('c'.repeat(64),now,'d'.repeat(64),now).run();
- for(let i=1;i<=8;i++) await env.DB.prepare("INSERT INTO questions(question_set_id,position,prompt,option_a,option_b,split_suggestion,agreed_text_a,agreed_text_b) VALUES(1,?,'질문','A','B','조율','A 합의','B 합의')").bind(i).run();
+ for(let i=1;i<=8;i++) {
+  await env.DB.prepare("INSERT INTO questions(question_set_id,position,prompt,option_a,option_b,split_suggestion,agreed_text_a,agreed_text_b) VALUES(1,?,'질문','A','B','조율','A 합의','B 합의')").bind(i).run();
+  await env.DB.prepare("INSERT INTO questions(question_set_id,position,prompt,option_a,option_b,split_suggestion,agreed_text_a,agreed_text_b) VALUES(2,?,'새 질문','A','B','조율','A 합의','B 합의')").bind(i).run();
+ }
  await env.DB.prepare("INSERT INTO rooms(code,gathering_name,party_size,question_set_id,created_at,expires_at) VALUES('ABCDEFGH23','여행',4,1,?,?)").bind(now,now+2592000).run();
  await env.DB.prepare("INSERT INTO participants(room_id,user_id,role,nickname,joined_at) VALUES(1,?,'host','이름',?)").bind(user,now).run();
 });
@@ -32,6 +35,6 @@ describe('TASK-020 API-006 questions',()=>{
   r=await worker.fetch(req(),bindings);expect(r.status).toBe(409);expect(await r.json()).toMatchObject({code:'room_closed'});
  });
  it('returns a default error if the fixed version is incomplete',async()=>{
-  await env.DB.prepare('DELETE FROM questions WHERE position=8').run();const r=await worker.fetch(req(),bindings);expect(r.status).toBe(500);expect(await r.json()).toMatchObject({code:'internal'});
+  await env.DB.prepare('DELETE FROM questions WHERE question_set_id=1 AND position=8').run();const r=await worker.fetch(req(),bindings);expect(r.status).toBe(500);expect(await r.json()).toMatchObject({code:'internal'});
  });
 });
