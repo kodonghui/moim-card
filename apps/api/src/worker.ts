@@ -1,4 +1,4 @@
-import { cleanup } from './cleanup';
+import { cleanup,cleanupNotificationLimits } from './cleanup';
 import { expireRooms } from './expire-rooms';
 import { createApi } from './app';
 import { createSession, type SessionEnv } from './create-session';
@@ -14,7 +14,7 @@ import { requireSession } from './session';
 import { submitResponse, getMyProfile, getCard, closeRoom } from './responses';
 import { createRoom, getRoom, joinRoom, getQuestions } from './rooms';
 
-interface Env extends SessionEnv, NotificationKeys { ORIGIN_PUBLIC: string; ORIGIN_PRIVATE: string; NOTIFICATION_TEMPLATE_SET_CODE?: string }
+interface Env extends SessionEnv, NotificationKeys { ORIGIN_PUBLIC: string; ORIGIN_PRIVATE: string; NOTIFICATION_TEMPLATE_SET_CODE?: string; NOTIFICATION_LIMIT_HMAC_KEY: string }
 export default {
   async fetch(request: Request, env: Env, ctx?: ExecutionContext): Promise<Response> {
     return createApi([env.ORIGIN_PUBLIC, env.ORIGIN_PRIVATE], [
@@ -38,6 +38,7 @@ export default {
   },
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
     const now=Math.floor(controller.scheduledTime / 1000);
-    await Promise.all([cleanup(env.DB, now),expireRooms(env.DB, now)]);
+    if(controller.cron==='* * * * *')await cleanupNotificationLimits(env.DB,now);
+    else if(controller.cron==='0 * * * *')await Promise.all([cleanup(env.DB, now),expireRooms(env.DB, now)]);
   },
 } satisfies ExportedHandler<Env>;

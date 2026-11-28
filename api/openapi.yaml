@@ -3524,6 +3524,13 @@ components:
         - TBL-012
         - TBL-014
         what: API-007 커밋 뒤 ctx.waitUntil로 send-message를 불러요(x-anon-key, templateSetCode, context). 식별키당 분당 10건, 실패는 기록만. 다른 응답의 알림은 마감 커밋 뒤 새로 시작하지 않고 이미 신청 확인·복호화를 마친 발송은 끝까지 보내요(DEC-050). 마지막 응답 알림은 DEC-024대로 보내요
+      cleanup-notification-limits:
+        spec:
+        - SPEC-025
+        - SPEC-029
+        tables:
+        - TBL-014
+        what: 매분 Cron. 지난 1분 구간의 식별키 HMAC 발송 한도 계수를 삭제해요(DEC-051)
       cleanup:
         spec:
         - SPEC-002

@@ -63,7 +63,7 @@ export async function deleteMyData(request:Request,db:D1Database,now=Math.floor(
   }
   if(stale)continue;
   statements.push(db.prepare('UPDATE sessions SET revoked_at=? WHERE user_id=? AND revoked_at IS NULL').bind(now,user));
-  statements.push(db.prepare('DELETE FROM rate_counters WHERE subject=?').bind(user));
+  statements.push(db.prepare("DELETE FROM rate_counters WHERE subject=? AND scope<>'toss_send_key'").bind(user));
   statements.push(db.prepare('DELETE FROM users WHERE id=?').bind(user));
   try {await db.batch(statements);return new Response(null,{status:204})}catch(error){
    if(await deletedSession(db,authorization,now))return new Response(null,{status:204});

@@ -24,4 +24,16 @@ describe('TASK-011 hourly cleanup', () => {
     await worker.scheduled(controller, env);
     expect((await env.DB.prepare('SELECT count(*) AS n FROM sessions').first<{n:number}>())?.n).toBe(0);
   });
+  it('minute cron physically deletes only expired notification limit counters', async () => {
+    const minute=Math.floor(now/60)*60, subject='h'+'a'.repeat(25);
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO rate_counters VALUES('toss_send_key',?,?,1)").bind(subject,minute-60),
+      env.DB.prepare("INSERT INTO rate_counters VALUES('toss_send_key',?,?,1)").bind(subject,minute),
+      env.DB.prepare("INSERT INTO rate_counters VALUES('write',?,?,1)").bind(user,minute-60),
+    ]);
+    await worker.scheduled({scheduledTime:now*1000,cron:'* * * * *',noRetry(){}} as ScheduledController,env);
+    expect((await env.DB.prepare('SELECT scope,window_start FROM rate_counters ORDER BY scope,window_start').all()).results).toEqual([
+      {scope:'toss_send_key',window_start:minute},{scope:'write',window_start:minute-60},
+    ]);
+  });
 });

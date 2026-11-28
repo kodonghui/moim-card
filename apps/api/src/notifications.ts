@@ -1,9 +1,10 @@
 import {notificationAAD,notificationKeyForVersion,type NotificationKeys} from './notification-crypto';
 import {checkLimit} from './rate-limit';
+import {notificationLimitSubject} from './notification-limit';
 import {createTossClient} from './toss';
 import type {SessionEnv} from './create-session';
 
-export type NotificationEnv=SessionEnv & NotificationKeys & {NOTIFICATION_TEMPLATE_SET_CODE?:string};
+export type NotificationEnv=SessionEnv & NotificationKeys & {NOTIFICATION_TEMPLATE_SET_CODE?:string;NOTIFICATION_LIMIT_HMAC_KEY:string};
 export type SendSnapshot={sendId:number;roomId:number;subscriptionId:number;participantId:number;userId:string;ciphertext:number[];nonce:number[];keyVersion:number};
 
 /** Process only committed, unique send records; never persist or log the decrypted identity. */
@@ -20,7 +21,10 @@ export async function sendNotifications(env:NotificationEnv, snapshots:SendSnaps
    const deliver=async()=>{
     const eligible=await env.DB.prepare(`SELECT 1 AS ok FROM notification_sends n JOIN participants p ON p.id=? AND p.user_id=? JOIN rooms r ON r.id=n.room_id WHERE n.id=? AND n.result='pending' AND p.room_id=r.id AND ${final ? "r.status='closed' AND r.close_reason='all_submitted'" : "r.status='open' AND r.expires_at>? AND EXISTS(SELECT 1 FROM notification_subscriptions s WHERE s.id=? AND s.participant_id=p.id AND s.room_id=r.id)"}`).bind(...(final?[row.participantId,row.userId,row.sendId]:[row.participantId,row.userId,row.sendId,Math.floor(Date.now()/1000),row.subscriptionId])).first();
     if(!eligible||expired)return;
-    const denied=await checkLimit(env.DB,'send',row.userId,Math.floor(Date.now()/1000));
+    if(!plaintext)return;
+    const subject=await notificationLimitSubject(plaintext,env);
+    if(expired)return;
+    const denied=await checkLimit(env.DB,'send',row.userId,Math.floor(Date.now()/1000),undefined,subject);
     if(expired)return;
     if(denied){result='skipped_limit';return}
     if(!plaintext)return;
