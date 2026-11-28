@@ -1,0 +1,3 @@
+name = "moim-contract-fake-toss"
+main = "fake-toss.js"
+compatibility_date = "2025-04-01"

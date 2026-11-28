@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: python3 -m pip install -r requirements-checks.txt
+      - run: python3 -m pip install -r requirements-checks.txt -r requirements-contract.txt
       - uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -41,6 +41,7 @@ jobs:
       - run: python3 -m unittest discover -s scripts -p test_publish_question_set.py
       - run: python3 -m unittest discover -s scripts -p test_first_question_sets.py
       - run: python3 scripts/check-question-sets.py
+      - run: python3 scripts/test-contract-local.py
       - run: python3 scripts/check-contract.py
       - run: python3 scripts/check-screens.py
       - run: python3 scripts/check-wbs.py
