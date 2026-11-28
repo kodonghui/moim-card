@@ -2,7 +2,7 @@ import { Hono, type MiddlewareHandler } from 'hono';
 import { errorCatalog, type ErrorCode } from './errors';
 
 type ApiEnv = {Variables: {userId: string}};
-type Route = { method: string; path: string; middleware?: MiddlewareHandler<ApiEnv>; handler: (request: Request) => Response | Promise<Response> };
+type Route = { method: string; path: string; middleware?: MiddlewareHandler<ApiEnv>; handler: (request: Request, userId: string | undefined) => Response | Promise<Response> };
 type Log = (entry: { traceId: string; code: ErrorCode; user?: string }) => void;
 
 /** User identifiers are hashed before logging, and raw request data is never accepted. */
@@ -44,8 +44,8 @@ export function createApi(origins: readonly [string, string], routes: Route[] = 
     c.header('Vary', 'Origin');
   });
   for (const route of routes) {
-    if (route.middleware) app.on(route.method.toUpperCase(), route.path, route.middleware, c => route.handler(c.req.raw));
-    else app.on(route.method.toUpperCase(), route.path, c => route.handler(c.req.raw));
+    if (route.middleware) app.on(route.method.toUpperCase(), route.path, route.middleware, c => route.handler(c.req.raw, c.get('userId')));
+    else app.on(route.method.toUpperCase(), route.path, c => route.handler(c.req.raw, c.get('userId')));
   }
   app.notFound(c => {
     const allowed = [...new Set(routes.filter(route => matches(route.path, c.req.path)).map(route => route.method.toUpperCase()))];
