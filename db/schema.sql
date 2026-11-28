@@ -239,7 +239,7 @@ CREATE TABLE idempotency_records (
 ) STRICT;
 CREATE INDEX idempotency_records_created ON idempotency_records (created_at);
 
--- TBL-014 rate_counters 요청 한도 계수 (공통 C-6) ← SPEC-002, SPEC-005, SPEC-024, SPEC-025, SPEC-038 | terms: none
+-- TBL-014 rate_counters 요청 한도 계수 (공통 C-6) ← SPEC-002, SPEC-005, SPEC-024, SPEC-025, SPEC-029, SPEC-038 | terms: none
 -- 규칙: (scope, subject, window_start)마다 한 행이고, 조건을 건 UPSERT로 세요. subject는 사용자 ID, 미니앱 전체를 뜻하는 'app', 또는 알림 한도 전용 별도 키의 HMAC 축약값이에요(DEC-051).
 --   toss_api_user  토스 API 호출, 사용자당 1분 20건       toss_api_app   토스 API 호출, 미니앱당 1분 3,000건(1분 구간 기록, SPEC-038)
 --   toss_send_key  알림 발송, 식별키당 1분 10건(F-4)      room_create    방 만들기, 사용자당 24시간 30개

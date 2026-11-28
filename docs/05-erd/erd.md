@@ -120,7 +120,7 @@ erDiagram
 | TBL-011 | notification_subscriptions | CTX-006 | TERM-035 | 알림 신청과 암호화한 식별키(AES-256-GCM) | SPEC-024~026, SPEC-028~030 |
 | TBL-012 | notification_sends | CTX-006 | TERM-033 | 응답마다 발송 기록(결과·토스 오류 코드만) | SPEC-025 |
 | TBL-013 | idempotency_records | 공통 | 없음 | 요청 ID와 첫 결과(24시간) | SPEC-005, SPEC-007, SPEC-011, SPEC-016, SPEC-024, SPEC-029 |
-| TBL-014 | rate_counters | 공통 | 없음 | 토스 API·쓰기·방 만들기 한도 계수, 토스 API 1분 구간 기록 | SPEC-002, SPEC-005, SPEC-024, SPEC-025, SPEC-038 |
+| TBL-014 | rate_counters | 공통 | 없음 | 토스 API·쓰기·방 만들기 한도 계수, 토스 API 1분 구간 기록 | SPEC-002, SPEC-005, SPEC-024, SPEC-025, SPEC-029, SPEC-038 |
 | TBL-015 | entry_stats | CTX-005 | 없음 | 날짜·유입 종류별 진입 수(사용자 값 없음) | SPEC-001, SPEC-023 |
 | TBL-016 | profile_phrases | CTX-002 | TERM-024 | 문항 세트 버전마다 성향 문구 7개(축 3개의 '낮음'·'높음', '균형' 1개). 한 줄 설명의 출처(DEC-039) | SPEC-012, SPEC-031 |
 
