@@ -15,7 +15,7 @@ QUESTION = '''  - prompt: question
     agreed_text_a: choose A
     agreed_text_b: choose B
     axis: plan_speed
-    axis_pole_a: low
+    high_choice: A
 '''.replace('option_a: yes', 'option_a: "yes"').replace('option_b: no', 'option_b: "no"')
 
 class QuestionSetsTest(unittest.TestCase):
@@ -27,7 +27,7 @@ class QuestionSetsTest(unittest.TestCase):
         self.write()
 
     def write(self, count=8, question=QUESTION):
-        self.path.write_text('theme: trip\nversion: 1\ndefault_next_action: decide\nquestions:\n' + question * count)
+        self.path.write_text('theme: trip\nversion: 1\ndefault_next_action: decide\nprofile_phrases:\n' + ''.join(f'  {slot}: text\n' for slot in sorted(checker.PHRASES)) + 'questions:\n' + question * count)
 
     def test_valid_set(self):
         self.assertEqual(checker.check(self.dir, {}), [])
@@ -50,8 +50,19 @@ class QuestionSetsTest(unittest.TestCase):
         self.path.unlink()
         self.assertIn('v2', checker.check(self.dir, {self.path.name: digest})[0])
 
-    def test_axis_and_pole_must_be_paired(self):
-        self.write(question=QUESTION.replace('    axis_pole_a: low\n', ''))
-        self.assertTrue(checker.validate(self.path))
+    def test_axis_requires_high_choice_a_or_b(self):
+        for replacement in ('', '    high_choice: C\n'):
+            self.write(question=QUESTION.replace('    high_choice: A\n', replacement))
+            self.assertTrue(any('high_choice' in e for e in checker.validate(self.path)))
+
+    def test_seven_profile_phrases_required(self):
+        self.path.write_text(self.path.read_text().replace('  balanced: text\n', ''))
+        errors = checker.validate(self.path)
+        self.assertTrue(any('seven required' in e for e in errors))
+        self.assertRegex(errors[0], r'\.yaml:\d+:')
+
+    def test_empty_profile_phrase_fails(self):
+        self.path.write_text(self.path.read_text().replace('  balanced: text', '  balanced: ""'))
+        self.assertTrue(any('balanced' in e for e in checker.validate(self.path)))
 
 if __name__ == '__main__': unittest.main()

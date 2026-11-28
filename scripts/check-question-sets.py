@@ -11,6 +11,7 @@ from pathlib import Path
 import yaml
 
 AXES = {'plan_speed', 'spending_priority', 'schedule_change'}
+PHRASES = {'plan_speed_low', 'plan_speed_high', 'spending_priority_low', 'spending_priority_high', 'schedule_change_low', 'schedule_change_high', 'balanced'}
 FIELDS = {'prompt': 40, 'option_a': 30, 'option_b': 30, 'split_suggestion': 60, 'agreed_text_a': 60, 'agreed_text_b': 60}
 
 
@@ -51,6 +52,13 @@ def validate(path):
     if isinstance(theme, str) and isinstance(version, int) and path.name != f'{theme}-v{version}.yaml':
         fail(root, 'filename must be <theme>-v<version>.yaml')
     text_field(root, value, 'default_next_action', 60)
+    phrases = value.get('profile_phrases')
+    phrases_node = field(root, 'profile_phrases')
+    if not isinstance(phrases, dict) or set(phrases) != PHRASES:
+        fail(phrases_node or root, 'profile_phrases must contain exactly the seven required phrases')
+    else:
+        for key in sorted(PHRASES):
+            text_field(phrases_node, phrases, key, 60)
     questions = value.get('questions')
     sequence = field(root, 'questions')
     if not isinstance(questions, list) or len(questions) != 8 or not isinstance(sequence, yaml.SequenceNode):
@@ -62,11 +70,11 @@ def validate(path):
             continue
         for key, maximum in FIELDS.items():
             text_field(node, question, key, maximum)
-        axis, pole = question.get('axis'), question.get('axis_pole_a')
+        axis, high = question.get('axis'), question.get('high_choice')
         if axis is not None and (not isinstance(axis, str) or axis not in AXES):
             fail(field(node, 'axis') or node, 'unknown axis')
-        if (axis is None) != (pole is None) or (pole is not None and pole not in ('low', 'high')):
-            fail(field(node, 'axis_pole_a') or node, 'axis and axis_pole_a must both be present; pole must be low or high')
+        if (axis is None) != (high is None) or (high is not None and high not in ('A', 'B')):
+            fail(field(node, 'high_choice') or node, 'axis and high_choice must both be present; high_choice must be A or B')
     return errors
 
 
