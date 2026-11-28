@@ -1,4 +1,5 @@
 import { cleanup } from './cleanup';
+import { expireRooms } from './expire-rooms';
 import { createApi } from './app';
 import { createSession, type SessionEnv } from './create-session';
 import { listThemes } from './themes';
@@ -36,6 +37,7 @@ export default {
     ]).fetch(request);
   },
   async scheduled(controller: ScheduledController, env: Env): Promise<void> {
-    await cleanup(env.DB, Math.floor(controller.scheduledTime / 1000));
+    const now=Math.floor(controller.scheduledTime / 1000);
+    await Promise.all([cleanup(env.DB, now),expireRooms(env.DB, now)]);
   },
 } satisfies ExportedHandler<Env>;
