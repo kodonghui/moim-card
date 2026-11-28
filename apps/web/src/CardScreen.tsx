@@ -11,7 +11,7 @@ export function CardScreen() {
   const [card, setCard] = React.useState<CardData>(); const [room, setRoom] = React.useState<Room>(); const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string>(); const [permission, setPermission] = React.useState(false); const [missing, setMissing] = React.useState(false); const [hostAllowed, setHostAllowed] = React.useState(true); const [closing, setClosing] = React.useState(false);
   const [closeError, setCloseError] = React.useState<string>(); const [seconds, setSeconds] = React.useState(0); const [refreshing, setRefreshing] = React.useState(false); const pending = React.useRef(false);
-  const dialog = React.useRef<HTMLDialogElement>(null); const operation = React.useRef<(() => Promise<unknown>)>();
+  const dialog = React.useRef<HTMLDialogElement>(null); const operation = React.useRef<(() => Promise<{ card: CardData }>)>();
   const code = entryContext.room; const path = `/v1/rooms/${encodeURIComponent(code || '')}`;
   const failure = React.useCallback((err: unknown) => {
     if (err instanceof ApiError && err.problem.code === 'origin_not_allowed') setPermission(true);
@@ -37,8 +37,8 @@ export function CardScreen() {
   async function close() {
     if (closing || seconds) return; setClosing(true); setError(undefined); setCloseError(undefined);
     try {
-      operation.current ??= client.operation(`${path}/close`, { method: 'POST', idempotent: true });
-      await operation.current(); dialog.current?.close(); navigate('/room/final', true);
+      operation.current ??= client.operation<{ card: CardData }>(`${path}/close`, { method: 'POST', idempotent: true });
+      const result = await operation.current(); roomContext.finalCard = result.card; roomContext.finalRoom = code || undefined; dialog.current?.close(); navigate('/room/final', true);
     } catch (err) {
       if (err instanceof ApiError && err.problem.code === 'not_host') { setHostAllowed(false); dialog.current?.close(); setError('not-host'); }
       else if (err instanceof ApiError && err.problem.code === 'not_enough_responses') { dialog.current?.close(); await load(); setError('not-enough'); }

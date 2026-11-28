@@ -23,7 +23,7 @@ async function enter(page: Page) {
   await page.route(/\/v1\/rooms\/[^/]+(?:\/participants)?$/, route => {
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
     if (route.request().method() === 'POST') return route.fulfill({ status: 201, headers: cors, json: { mySubmitted: false } });
-    return route.fulfill({ headers: cors, json: { gatheringName: '제주 3박', theme: { name: '여행' }, partySize: 4, submittedCount: 1, isFull: false, status: 'open', myRole: 'none', mySubmitted: false, asOf: '2026-11-28T09:30:00Z' } });
+    return route.fulfill({ headers: cors, json: { gatheringName: '제주 3박', theme: { name: '여행' }, partySize: 4, submittedCount: 1, isFull: false, status: page.url().endsWith('/room/final') ? 'closed' : 'open', myRole: 'none', mySubmitted: false, asOf: '2026-11-28T09:30:00Z' } });
   });
   await page.goto('/room?room=ABCDEFGH23'); await page.getByRole('button', { name: '참여하기' }).click();
   await page.getByLabel('닉네임').fill('바다'); await page.getByRole('button', { name: '들어가기' }).click();
