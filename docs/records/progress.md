@@ -1,5 +1,17 @@
 # 진행 기록
 
+### 2026-11-28 · 09 목업 확정과 토큰 고정
+
+- Done: 토링이가 전한 오랑이 답(사용자님 주말 위임 "너가 다른애들 승인을 하던 말던 해라" 근거)을 DEC-035로 기록했어요: 09 목업 확정(A 바탕 + 합의 카드만 B 모양, PR #10 커밋 `e03ce6f`), 토큰 고정, PR #10 병합 승인(병합은 토링이). DEC-032를 in force로 바꾸고, `design/base.tokens.json` 설명에 고정 표시를 넣었어요. `.corthex/stages.json`의 09를 `done`으로 바꾸고 체크포인트를 적었어요. [09-mockup/README.md](../09-mockup/README.md)의 상태 줄과 질문 답을 고쳤어요.
+- Why: 토링이 작업 지시(2026-11-28, Orca 작업 task_3aeb4fbf9b22). 09는 원래 사용자님이 직접 보는 단계였고, 이번 통과는 주말 위임에 따른 오랑이 답이에요.
+- Result: 09 통과, 토큰 고정. 바꾸려면 새 결정이 필요해요.
+- 개발 단계 확인 항목(목업에서 재지 않음, 11 개발·12 QA에서 확인):
+  1. 실제 토스 앱 WebView에서 TDS 컴포넌트로 그렸을 때의 모습(버튼 모양, Toss Product Sans 글꼴, 합의 카드 색이 카드 안에만 있는지, 360·430px)
+  2. 스크린 리더(iOS VoiceOver, Android TalkBack)가 읽는 순서와 이름(선택지, 진행 막대, 확인 창, 합의 카드의 분류와 수)
+  3. 키보드 Tab 순서와 포커스 표시(확인 창 안에 포커스가 머무는지, 포커스가 붙은 아래 버튼에 가려지지 않는지)
+- Checked: term-check, `scripts/check-screens.py`, `tokens.py check`, hub snapshot과 `push --dry-run` 결과는 PR #10과 보고에 적어요.
+- Next: PR #10 병합(토링이) → `push moim-card` → 10 WBS.
+
 ### 2026-11-28 · 09 목업: A 바탕 + 카드만 B로 화면 15개
 
 - Done: 사용자님 답(Orca 항목 256, e4535) "A 바탕 + 카드만 B(추천)"을 DEC-033으로, "방장 화면 버튼 3개 이대로"를 DEC-034로 기록했어요. 토큰을 `design/base.tokens.json` 한 벌로 합치고 합의 카드 색을 `color.card` 그룹에 뒀어요(시안별 토큰 파일과 시안 페이지는 지우고 캡처는 captures/candidates/에 남김). [scripts/draw-mockups.py](../../scripts/draw-mockups.py)를 다시 써서 08 상태 표에서 상태 목록을 읽어 화면 15개·상태 70개를 [design/mockups/mockup.html](../../design/mockups/mockup.html)에 그렸어요. 08 화면 정의 15개에 "목업" 절(목업 링크, 정한 배치와 문구)을 더했어요. 캡처 세 장을 [design/mockups/captures/](../../design/mockups/captures/)에 뒀어요. 사용자님 최종 확인 질문은 [09-mockup/README.md](../09-mockup/README.md) 3절이에요.

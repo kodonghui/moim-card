@@ -216,7 +216,7 @@
       ]
     },
     "09-mockup": {
-      "state": "in_progress",
+      "state": "done",
       "checks": [
         {
           "level": "info",
@@ -227,11 +227,23 @@
           "level": "info",
           "message": "방향 A 바탕 + 카드만 B(DEC-033)로 화면 15개·상태 70개. tokens check 색 29개·토큰 밖 0, page-check 292번 오류 0·경고 0, 누르기 23개 통과, 카드 색이 카드 밖에 0개",
           "at": "2026-11-28"
+        },
+        {
+          "level": "info",
+          "message": "토큰 고정(DEC-035). 개발 단계 확인 항목 3개: 실제 토스 WebView·TDS 렌더, 스크린 리더 읽는 순서, 키보드 Tab 순서·포커스",
+          "at": "2026-11-28"
         }
       ],
-      "checkpoints": [],
-      "next": "사용자님 최종 확인(docs/09-mockup/README.md 3절, 토큰 고정 체크포인트) → 통과 기록 → 10 WBS",
-      "updated": "2026-11-28T18:30:00+09:00"
+      "checkpoints": [
+        {
+          "approved": "09 목업 체크포인트 통과(방향 하나와 토큰 고정). 목업 A 바탕 + 합의 카드만 B 모양(화면 15개, 상태 70개, PR #10 커밋 e03ce6f)을 확정하고 design/base.tokens.json을 고정. 방향은 사용자님 \"A 바탕 + 카드만 B(추천)\"(DEC-033, Orca 항목 256 e4535), 방장 버튼은 사용자님 \"이대로\"(DEC-034), 확정은 오랑이가 사용자님 주말 위임(\"너가 다른애들 승인을 하던 말던 해라\")으로 답함(DEC-035). 실제 토스 WebView·스크린 리더·키보드 순서는 개발 단계 확인 항목",
+          "by": "the orchestrator agent on the owner's behalf (direction and host buttons chosen by the owner)",
+          "where": "docs/records/decisions.md (DEC-031, DEC-033, DEC-034, DEC-035)",
+          "date": "2026-11-28"
+        }
+      ],
+      "next": "10 WBS(TASK ID). 11·12에서 개발 단계 확인 항목 3개(토스 WebView·TDS 렌더, 스크린 리더, 키보드 순서)를 확인",
+      "updated": "2026-11-28T18:45:00+09:00"
     }
   }
 }
