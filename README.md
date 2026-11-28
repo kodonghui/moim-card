@@ -6,7 +6,7 @@
 
 ## 개발 명령
 
-Node.js 22와 Corepack을 준비한 뒤 저장소 루트에서 실행해요.
+Node.js 22와 Corepack을 준비한 뒤 저장소 루트에서 실행해요. 빌드 전에 운영자 이름과 연락처를 환경 변수 `VITE_OPERATOR_NAME`, `VITE_OPERATOR_CONTACT`로 지정해요.
 
 ```sh
 corepack enable
@@ -38,4 +38,4 @@ pnpm --filter @moim-card/apps-web dev
 pnpm dlx @stoplight/prism-cli mock api/openapi.yaml
 ```
 
-운영 빌드에는 실제 HTTPS API 주소를 `VITE_API_BASE_URL` 환경 변수로 전달해요. 개발 서버에서만 값이 없을 때 로컬 Prism 주소를 사용해요.
+운영 빌드에는 실제 HTTPS API 주소를 `VITE_API_BASE_URL` 환경 변수로 전달해요. 개발 서버에서만 값이 없을 때 로컬 Prism 주소를 사용해요. 운영자 이름이나 연락처가 없으면 운영 빌드는 실패해요. 이 값은 약관과 개인정보처리방침에 표시되며, 확정된 값은 저장소 밖에서 주입해요.
