@@ -1,0 +1,17 @@
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+class ClientLogCheck(unittest.TestCase):
+    def test_prohibits_logs_and_analytics_parameters(self):
+        with tempfile.TemporaryDirectory() as directory:
+            sample = Path(directory) / 'sample.ts'
+            for code, succeeds in [('Analytics.log("interim_card_created")', True), ('console.log(roomCode)', False), ('Analytics.log("interim_card_created", {roomCode})', False), ('reportError(roomCode)', False)]:
+                with self.subTest(code=code):
+                    sample.write_text(code)
+                    result = subprocess.run(['node', 'scripts/check-client-logs.cjs', directory], capture_output=True)
+                    self.assertEqual(result.returncode == 0, succeeds)
+
+if __name__ == '__main__':
+    unittest.main()
