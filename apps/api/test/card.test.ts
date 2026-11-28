@@ -22,6 +22,11 @@ describe('TASK-024 API-009 card',()=>{
   r=await worker.fetch(card('c'),bindings);expect(r.status).toBe(403);expect(await r.json()).toMatchObject({code:'not_participant'});
   await worker.fetch(submit('a'),bindings);r=await worker.fetch(card('a'),bindings);expect(r.status).toBe(200);expect(await r.json()).toMatchObject({stage:'none',basedOnCount:1,items:[],nextAction:null,finalizedAt:null});
  });
+ it('does not expose a stale interim card after responses drop below two',async()=>{
+  await worker.fetch(submit('a'),bindings);await worker.fetch(submit('b'),bindings);
+  await env.DB.prepare('DELETE FROM responses WHERE participant_id=2').run();await env.DB.prepare('UPDATE rooms SET submitted_count=1').run();
+  const r=await worker.fetch(card('a'),bindings);expect(r.status).toBe(200);expect(await r.json()).toMatchObject({stage:'none',basedOnCount:1,items:[]});
+ });
  it('repairs a failed interim card write when the card is read',async()=>{
   await worker.fetch(submit('a'),bindings);
   await env.DB.prepare("CREATE TRIGGER test_fail_card BEFORE INSERT ON consensus_cards BEGIN SELECT RAISE(ABORT, 'interim_card_write_failed'); END").run();
@@ -34,6 +39,42 @@ describe('TASK-024 API-009 card',()=>{
   const body=await r.json() as {stage:string;basedOnCount:number;items:Record<string,unknown>[]};
   expect(body).toMatchObject({stage:'interim',basedOnCount:2});expect(body.items).toHaveLength(8);expect(body.items[0]).toMatchObject({countA:2,countB:0,countNone:0,text:'A 합의'});
   expect((await env.DB.prepare('SELECT based_on_count AS n FROM consensus_cards').first<{n:number}>())?.n).toBe(2);
+ });
+ it('does not overwrite a newer card when a submission commits during repair',async()=>{
+  await env.DB.prepare('UPDATE rooms SET party_size=4,participant_count=3').run();
+  await env.DB.prepare("INSERT INTO participants(room_id,user_id,role,nickname,joined_at) VALUES(1,?,'member','이름',?)").bind(user('c'),now).run();
+  await worker.fetch(submit('a'),bindings);await worker.fetch(submit('b'),bindings);await env.DB.prepare('DELETE FROM consensus_cards').run();
+  let signal!:()=>void,release!:()=>void,first=true;const started=new Promise<void>(r=>{signal=r}),gate=new Promise<void>(r=>{release=r}),observed:number[]=[];
+  const delayed=new Proxy(env.DB,{get(target,prop){if(prop==='prepare')return (sql:string)=>{
+   const stmt=target.prepare(sql);if(!sql.includes("SELECT ?,'interim'"))return stmt;
+   return new Proxy(stmt,{get(statement,key){if(key==='bind')return (...args:unknown[])=>{
+    const bound=statement.bind(...args);return new Proxy(bound,{get(query,method){if(method==='run')return async()=>{
+     if(first){first=false;signal();await gate}const result=await query.run();
+     observed.push((await env.DB.prepare('SELECT based_on_count AS n FROM consensus_cards').first<{n:number}>())!.n);return result;
+    };const v=Reflect.get(query,method,query);return typeof v==='function'?v.bind(query):v}});
+   };const v=Reflect.get(statement,key,statement);return typeof v==='function'?v.bind(statement):v}});
+  };const v=Reflect.get(target,prop,target);return typeof v==='function'?v.bind(target):v}});
+  const pending=worker.fetch(card('a'),{...bindings,DB:delayed});await started;
+  expect((await worker.fetch(submit('c'),bindings)).status).toBe(201);release();const r=await pending;
+  expect(r.status).toBe(200);expect(await r.json()).toMatchObject({stage:'interim',basedOnCount:3});
+  expect(observed).toEqual([3]);expect((await env.DB.prepare('SELECT based_on_count AS n FROM consensus_cards').first<{n:number}>())?.n).toBe(3);
+ });
+ it('rechecks room state when a submission lands between the card read and response',async()=>{
+  await env.DB.prepare('UPDATE rooms SET party_size=4,participant_count=3').run();
+  await env.DB.prepare("INSERT INTO participants(room_id,user_id,role,nickname,joined_at) VALUES(1,?,'member','이름',?)").bind(user('c'),now).run();
+  await worker.fetch(submit('a'),bindings);await worker.fetch(submit('b'),bindings);
+  let reads=0;
+  const delayed=new Proxy(env.DB,{get(target,prop){if(prop==='prepare')return (sql:string)=>{
+   const stmt=target.prepare(sql);if(!sql.includes('LEFT JOIN responses resp'))return stmt;
+   return new Proxy(stmt,{get(statement,key){if(key==='bind')return (...args:unknown[])=>{
+    const bound=statement.bind(...args);return new Proxy(bound,{get(query,method){if(method==='first')return async (...firstArgs:unknown[])=>{
+     if(++reads===2)expect((await worker.fetch(submit('c'),bindings)).status).toBe(201);
+     return query.first(...firstArgs);
+    };const v=Reflect.get(query,method,query);return typeof v==='function'?v.bind(query):v}});
+   };const v=Reflect.get(statement,key,statement);return typeof v==='function'?v.bind(statement):v}});
+  };const v=Reflect.get(target,prop,target);return typeof v==='function'?v.bind(target):v}});
+  const r=await worker.fetch(card('a'),{...bindings,DB:delayed});expect(r.status).toBe(200);expect(await r.json()).toMatchObject({stage:'interim',basedOnCount:3});
+  expect(reads).toBeGreaterThanOrEqual(4);
  });
  it('shows a fixed final card to a nonparticipant even after a response is removed',async()=>{
   await worker.fetch(submit('a'),bindings);await worker.fetch(submit('b'),bindings);

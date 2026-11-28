@@ -8,6 +8,10 @@ export type CardItem = {
   category: 'agreed' | 'split' | 'open'; countA: number; countB: number; countNone: number; text: string;
 };
 
+export function cardItemText(question: CardQuestion, category: CardItem['category'], countA: number): string {
+  return category === 'split' ? question.splitSuggestion : category === 'open' ? '누구나 괜찮아요' : countA ? question.agreedTextA : question.agreedTextB;
+}
+
 /** SPEC-013: responses contain one answer per question in position order. */
 export function calculateCard(questions: readonly CardQuestion[], responses: readonly (readonly Answer[])[], defaultNextAction: string): {items: CardItem[]; nextAction: string} {
   if (questions.length !== 8 || responses.length < 2 || responses.length > 8 ||
@@ -20,7 +24,7 @@ export function calculateCard(questions: readonly CardQuestion[], responses: rea
     const countB = responses.filter(row => row[index] === 'B').length;
     const countNone = responses.length - countA - countB;
     const category = countA && countB ? 'split' : countA || countB ? 'agreed' : 'open';
-    const text = category === 'split' ? question.splitSuggestion : category === 'open' ? '누구나 괜찮아요' : countA ? question.agreedTextA : question.agreedTextB;
+    const text = cardItemText(question, category, countA);
     return { position: question.position, prompt: question.prompt, optionA: question.optionA, optionB: question.optionB, category, countA, countB, countNone, text };
   });
   const split = items.filter(item => item.category === 'split').sort((a, b) => Math.abs(a.countA - a.countB) - Math.abs(b.countA - b.countB) || a.position - b.position)[0];

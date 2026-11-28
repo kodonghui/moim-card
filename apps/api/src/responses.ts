@@ -1,4 +1,4 @@
-import {calculateCard, calculateProfile, type Answer, type Axis, type CardQuestion, type ProfilePhrases} from '@moim-card/packages-shared';
+import {calculateCard, cardItemText, calculateProfile, type Answer, type Axis, type CardQuestion, type ProfilePhrases} from '@moim-card/packages-shared';
 import {problemResponse} from './app';
 import {idempotent} from './idempotency';
 import {findSessionUser} from './session';
@@ -153,7 +153,7 @@ export async function renderStoredCard(db:D1Database,room:Room,card:StoredCard|n
  if(!Array.isArray(stored)||stored.length!==8)throw new Error('Stored card incomplete');
  const items=stored.map((item,index)=>{
   const q=questions[index];if(item.position!==q.position)throw new Error('Stored card position mismatch');
-  const text=item.category==='split'?q.splitSuggestion:item.category==='open'?'누구나 괜찮아요':item.a?q.agreedTextA:q.agreedTextB;
+  const text=cardItemText(q,item.category,item.a);
   return {position:item.position,prompt:q.prompt,optionA:q.optionA,optionB:q.optionB,category:item.category,countA:item.a,countB:item.b,countNone:item.none,text};
  });
  return {stage:card.stage,basedOnCount:card.basedOnCount,items,nextAction:card.nextAction,finalizedAt:card.finalizedAt===null?null:new Date(card.finalizedAt*1000).toISOString(),...common};
@@ -170,7 +170,7 @@ export async function getCard(request:Request,db:D1Database,now=Math.floor(Date.
   }
   const latest=await readRoom(db,user,code,now);if(!latest)return problemResponse('room_not_found');
   if(latest.status!==room.status||latest.submittedCount!==room.submittedCount)continue;
-  const card=await db.prepare('SELECT stage,based_on_count AS basedOnCount,items,next_action AS nextAction,finalized_at AS finalizedAt FROM consensus_cards WHERE room_id=?').bind(room.id).first<StoredCard>();
+  const card=latest.status==='open' && latest.submittedCount<2 ? null : await db.prepare('SELECT stage,based_on_count AS basedOnCount,items,next_action AS nextAction,finalized_at AS finalizedAt FROM consensus_cards WHERE room_id=?').bind(room.id).first<StoredCard>();
   if(latest.status==='open'&&latest.submittedCount>=2&&(!card||card.stage!=='interim'||card.basedOnCount!==latest.submittedCount))continue;
   return Response.json(await renderStoredCard(db,latest,card,now));
  }
