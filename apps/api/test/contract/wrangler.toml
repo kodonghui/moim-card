@@ -1,0 +1,21 @@
+# Local contract tests only: no remote resources or real credentials.
+name = "moim-contract-api"
+main = "../../src/worker.ts"
+compatibility_date = "2025-04-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "moim-contract-local"
+database_id = "00000000-0000-4000-8000-000000000000"
+
+[[services]]
+binding = "TOSS"
+service = "moim-contract-fake-toss"
+
+[vars]
+ORIGIN_PUBLIC = "https://example.test"
+ORIGIN_PRIVATE = "https://private.test"
+USER_HMAC_KEY = "contract-test-fake-hmac-key-0000000000"
+NOTIFICATION_KEYS = '{"1":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc"}'
+NOTIFICATION_ACTIVE_KEY_VERSION = "1"
+NOTIFICATION_TEMPLATE_SET_CODE = "contract-test-template"
