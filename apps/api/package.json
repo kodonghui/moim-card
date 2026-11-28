@@ -7,5 +7,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vitest": "3.2.4"
   }
 }

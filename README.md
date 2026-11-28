@@ -10,10 +10,13 @@ Node.js 22와 Corepack을 준비한 뒤 저장소 루트에서 실행해요.
 
 ```sh
 corepack enable
+python3 -m pip install -r requirements-checks.txt
 pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm test
 pnpm build
+python3 -m unittest discover -s scripts -p test_check_build.py
+python3 scripts/check-build.py
 python3 scripts/check-contract.py
 python3 scripts/check-screens.py
 python3 scripts/check-wbs.py

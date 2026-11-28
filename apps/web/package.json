@@ -7,5 +7,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "build": "tsc"
+  },
+  "dependencies": {
+    "@apps-in-toss/web-framework": "3.11.0"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vitest": "3.2.4"
   }
 }
