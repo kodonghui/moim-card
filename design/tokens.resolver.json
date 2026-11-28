@@ -1,0 +1,38 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/resolver.json",
+  "version": "2025.10",
+  "sets": {
+    "base": {
+      "sources": [
+        {
+          "$ref": "base.tokens.json"
+        }
+      ]
+    }
+  },
+  "modifiers": {
+    "candidate": {
+      "contexts": {
+        "a": [
+          {
+            "$ref": "candidate-a.tokens.json"
+          }
+        ],
+        "b": [
+          {
+            "$ref": "candidate-b.tokens.json"
+          }
+        ]
+      },
+      "default": "a"
+    }
+  },
+  "resolutionOrder": [
+    {
+      "$ref": "#/sets/base"
+    },
+    {
+      "$ref": "#/modifiers/candidate"
+    }
+  ]
+}
