@@ -24,26 +24,34 @@
       "updated": "2026-11-27T18:05:00+00:00"
     },
     "02-prd": {
-      "state": "in_progress",
+      "state": "done",
       "checks": [
         {
           "level": "info",
-          "message": "REQ 82개(Must 67, Should 15), 모두 active. 범위 고정과 질문 1~5는 DEC-008~013으로 답함",
+          "message": "REQ 82개(Must 67, Should 15), 모두 active. 체크포인트는 DEC-008~013 답과 DEC-014(NEXUS 확정 없이 통과)로 통과",
           "at": "2026-11-28"
         },
         {
-          "level": "warn",
-          "message": "F-1: 콘솔에서 사업자 없이 mTLS 인증서가 발급되는지 미확인(REQ-041, REQ-058)",
+          "level": "info",
+          "message": "F-1: 콘솔에서 사업자 없이 mTLS 인증서가 발급되는지 미확인, 05 ERD·06 API 전에 확인(REQ-041, REQ-058)",
           "at": "2026-11-28"
         },
         {
-          "level": "warn",
-          "message": "F-2: 전환 지표 이벤트를 남기는 SDK 호출 미확인(REQ-071)",
+          "level": "info",
+          "message": "F-2: 전환 지표 이벤트를 남기는 SDK 호출 미확인, 05 ERD·06 API 전에 확인(REQ-071)",
           "at": "2026-11-28"
         }
       ],
-      "next": "PR #5 병합(사용자님 승인 사항)·push → NEXUS 02 목록 확정(버전 고정). 뒤이어 01 domain.md 응답 규칙(DEC-013)·핫스팟·용어 갱신과 01 다시 확정",
-      "updated": "2026-11-28T10:30:00+09:00"
+      "next": "03 사용자 흐름(FL ID). 그 전에 01 domain.md 응답 규칙(DEC-013)·핫스팟·용어 갱신과 01 다시 확정",
+      "updated": "2026-11-28T11:30:00+09:00",
+      "checkpoints": [
+        {
+          "approved": "02 PRD 범위 고정 체크포인트 통과(REQ-001~082, main 20d6423). 범위 고정과 질문 1·2·3·5는 오랑이가 사용자님 위임으로 추천안 승인(DEC-008~012, 위임 근거 2026-11-23 \"추천 모두 승인\", 2026-11-27 \"DDD랑 목업때만\"), 질문 4는 사용자님 \"누구나 보기(추천)\"(DEC-013). NEXUS 확정 없이 위임 승인으로 통과(DEC-014, 사용자님 \"걍 해 꼭 넥서스에서 해야대?\", Orca 항목 244 e4307)",
+          "by": "the owner (delegated: scope and questions 1-3, 5 answered by the orchestrator agent on the owner's behalf; question 4 answered by the owner)",
+          "where": "docs/records/decisions.md (DEC-008~014)",
+          "date": "2026-11-28"
+        }
+      ]
     }
   }
 }
