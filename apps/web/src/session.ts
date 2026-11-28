@@ -1,5 +1,6 @@
 import { User } from '@apps-in-toss/web-framework';
 import { ApiClient } from './api';
+export const sessionState = { reauthenticationFailed: false };
 export async function authCode(): Promise<string> { return (await User.createAnonymousKeyAuthCode()).code; }
 export const client: ApiClient = new ApiClient({
   baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:4010',

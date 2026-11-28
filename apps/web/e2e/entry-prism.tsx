@@ -1,0 +1,20 @@
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { TDSMobileAITProvider } from '@toss/tds-mobile-ait';
+import tokens from '../../../design/base.tokens.json';
+import { ApiClient } from '../src/api';
+import { EntryScreen } from '../src/EntryScreen';
+import '../src/style.css';
+const query = new URL(location.href).searchParams;
+const status = query.get('status') || '201';
+const delayed = query.get('delay') === 'yes';
+const fetcher: typeof fetch = async (input, init) => {
+  if (delayed) await new Promise(resolve => setTimeout(resolve, 1300));
+  const headers = new Headers(init?.headers);
+  if (String(input).endsWith('/v1/sessions')) headers.set('Prefer', `code=${status}`);
+  return fetch(input, { ...init, headers });
+};
+const client = new ApiClient({ baseUrl: 'http://127.0.0.1:4010', fetcher, reauthenticate: async () => 'unused' });
+let authCalls = 0;
+const services = { version: () => query.get('version') || '5.240.0', authCode: async () => { authCalls++; document.body.dataset.authCalls = String(authCalls); return 'a1b2c3d4e5f60718293a4b5c6d7e8f90'; }, client, navigate: (path: string) => history.replaceState(null, '', path), close: async () => {}, room: null, referrerKind: 'other' as const };
+createRoot(document.getElementById('root')!).render(<TDSMobileAITProvider brandPrimaryColor={tokens.color.accent.default.$value.hex}><EntryScreen services={services} /></TDSMobileAITProvider>);

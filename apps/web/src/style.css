@@ -11,3 +11,5 @@ main { color: var(--color-text-primary); padding: var(--space-6); }
 
 .entry-actions button:disabled > div:first-child { background-color: var(--color-disabled-bg) !important; }
 .entry-actions button:disabled span { color: var(--color-disabled-text) !important; }
+
+.entry-actions button:disabled { opacity: 1 !important; }
